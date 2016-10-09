@@ -1,0 +1,12 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+    echo "Needs an integer argument in seconds"
+    exit 1
+fi;
+
+echo $(date): waiting $1 seconds
+sleep $1; 
+echo $(date): elapsed
+cd $(dirname $0)/snd
+mpg123 -q ahh.mp3

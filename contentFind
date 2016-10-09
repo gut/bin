@@ -1,0 +1,8 @@
+#! /bin/bash
+# -*- iso 8859-1 -*-
+
+# Autor: Gustavo Serra Scalet
+# Script que procura o argumento passado em todos os arquivos 
+# e diretórios recursivamente com os argumentos passados
+
+egrep -irn "$*" * | sort | grep -v bin.rio | grep -v Binary | grep -v \.svn | grep -v \/*tags:

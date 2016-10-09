@@ -1,0 +1,10 @@
+# !/bin/bash
+# -*- utf-8 -*-
+
+if [ $1 ] ;
+	then lines=$1;
+else
+	lines=15;
+fi
+
+watch tail -n $lines /var/log/apache2/error_log

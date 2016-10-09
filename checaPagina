@@ -1,0 +1,55 @@
+#!/usr/bin/env python
+# *-* coding: utf-8 *-*
+
+# Programa que checa se já mudo o eskema da comvest
+
+def pegaHoraMinutoSegundo():
+    from time import strftime
+    return '%s:%s:%s' % (strftime('%H'), strftime('%M'), strftime('%S'))
+
+def TempoLegivel(tempo):
+    if tempo >= 60*60:
+        h = int(tempo/(60*60))
+        tempo -= h*60*60
+        m = int(tempo/60)
+        s = tempo.__mod__(60)
+        return '%02d h, %02d min e %02d s' % (h, m, s)
+    elif tempo >= 60:
+        m = int(tempo/60)
+        s = tempo.__mod__(60)
+        return '%02d min e %02d s' % (m, s)
+    else:
+        return '%02d s' % tempo
+
+from urllib import urlopen
+from time import sleep, time
+from sys import argv
+
+if argv.__len__() > 1:
+    myUrl = argv[1]
+else:
+    print "Qual site q deseja observar?"
+    myUrl = raw_input()
+
+print 'Início do script ...'
+old = urlopen(myUrl)
+oldSize = old.read().__len__()
+inicioHoraMinutoSegundo = pegaHoraMinutoSegundo()
+inicio = time()
+print 'Atualmente essa página ocupa %d bytes' % oldSize
+
+# agora verifica até mudar
+try:
+    while (True):
+        new = urlopen(myUrl)
+        newSize = new.read().__len__()
+        if (newSize != oldSize):
+            break;
+        sleep(10)
+        print '(%s - %s) Depois de %s ainda não mudou' % (inicioHoraMinutoSegundo, pegaHoraMinutoSegundo(), TempoLegivel(time()-inicio))
+
+    print '\n\n\nMudou apartir das %s!!! (%d bytes)' % (pegaHoraMinutoSegundo(), newSize)
+
+except (KeyboardInterrupt, EOFError,):
+    print "Abortando..."
+

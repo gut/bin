@@ -1,0 +1,494 @@
+#!/usr/bin/env python
+# *-* coding: iso8859-1 *-*
+
+"""
+Autor: Gustavo Serra Scalet (gsscalet@gmail.com)
+Licença de uso: GPL
+Ultima atualização: 05/12/2006 (v1.0)
+
+Descrição: Script que copia fotos jpg da origem, arranjando em um álbum
+simples e podendo ainda fazer um pacote .zip feito no final da execução
+"""
+
+# ==============
+# Opções Padrão:
+# ==============
+# mude o valor 'True' para 'False' caso a resposta seja 'não'
+
+# Deseja que o programa sempre seja executado com essas informações?
+# Caso 'False' o programa irá disponibilizar a mudança dos parâmetros na inicialização
+ModoPadrao		= False
+# Pasta a qual as fotos serão processadas ('.' será a pasta atual)
+OrigemPadrao		= '.'
+# Pasta a ser salvo as fotos ('.' será a pasta atual)
+DestinoPadrao		= 'album'
+# Qualidade padrão de compressão (1-100) na criação das miniaturas
+QualPadrao		= 75
+# Fazer pacote zip no final da compressão?
+ZipPadrao		= True
+# Nome do pacote zip a ser criado
+ZipNomePadrao		= 'album.zip'
+# Tamanho das miniaturas no índice do álbum (largura da foto)
+AlbumMiniSizePadrao	= 300
+# Tamanho da foto na visualização dela (largura da foto)
+AlbumVisSizePadrao	= 800
+# Quantas colunas na página de miniaturas?
+AlbumColPadrao		= 3
+
+class Foto(object):
+	"""Classe capaz de lidar com arquivos jpeg e bmps, constrói um álbum html"""
+	from time import time
+
+	def __init__(self):
+		"""Marca d'agua e configurações padrão do programa"""
+		from os import sep
+
+		print u"""Montador de Álbuns\n==================\nAutor: Gustavo Serra Scalet (gsscalet@gmail.com)\nLicença de uso: GPL\n"""
+		self.Origem		= OrigemPadrao
+		self.Destino		= DestinoPadrao
+		self.Qualidade		= QualPadrao
+		self.FazZip		= ZipPadrao
+		self.NomeZip		= ZipNomePadrao
+		self.AlbumMiniSize	= AlbumMiniSizePadrao
+		self.AlbumVisSize	= AlbumVisSizePadrao
+		self.AlbumCol		= AlbumColPadrao
+
+	def __del__(self):
+		"""Apenas um raw_input() para que o usuário possa ler a saída do programa""" 
+		print u'\nPressione Enter para sair'
+		raw_input()
+
+	def Termina(self, txt):
+		"""Chamada a finalização do programa, erros ou padrão, imprime mensagem caso necessário"""
+		from sys import exit
+		print txt
+		exit()
+
+	def BooleanString(self, bool):
+		"""Retorna caractere 's' se bool for verdadeira e 'n' se falso"""
+		if bool:
+			return 's'
+		else:
+			return 'n'
+
+	def myint(self, i):
+		"""Evitar que o int(i) cause o erro ValueError. Se nao for encontrado, retorne 1"""
+		try:
+			return  int(i)
+		except ValueError:
+			return 1
+
+	def TempoLegivel(self, tempo):
+		if tempo >= 60:
+			# imprime minutos e segundos
+			tempo = str(int(tempo/60)) + ' min e ' + '%.03f' % tempo.__mod__(60) + ' s'
+		else:
+			# imprime tempo bruto em segundos
+			tempo = '%.03f' % tempo + ' s'
+		return tempo
+
+	def Configura(self):
+		"""Lê as variáveis que serão usadas na execução"""
+		q = 'iniciado'
+		FirstLoop = True
+		while q != '':
+			if not FirstLoop:
+				self.ConfiguraRedefine(str(q).lower())
+
+			# Confirmação
+			if FirstLoop:
+				print u'Configurações padrão:'
+			else:
+				print u'\nConfigurações estabelecidas:'
+			print u'o) Pasta a origem a ser processada: "%s"' % self.Origem
+			print u'd) Pasta destino que conterá os arquivos processados: "%s"' % self.Destino
+			print u'q) Qualidade a ser usada: %d%%' % self.Qualidade
+			if self.FazZip:
+				print u'z) Será criado pacote Zip no fim da execução com nome "%s"' % self.NomeZip
+			else:
+				print u'z) Não será criado pacote Zip no fim da execução'
+			print u'a) Álbum terá miniaturas de "%d" e "%d" de largura em "%d" colunas' % (self.AlbumMiniSize, self.AlbumVisSize, self.AlbumCol)
+			print u'\nEntre com a letra relacionada à opção desejada ou apenas enter para iniciar:'
+			q = raw_input()
+			FirstLoop = False
+
+	def ConfiguraRedefine(self, q):
+		"""Redefine a configuração 'q' entrada pelo usuário"""
+		from os import sep
+
+		if q == 'o':
+			# define self.Origem
+			print u'- Entre com o nome da pasta que contém os arquivos a serem lidos, padrão: "%s"' % OrigemPadrao
+			q = raw_input()
+			if not q.strip():
+				q = OrigemPadrao
+			self.Origem = q
+
+		elif q == 'd':
+			# define self.Destino e self.AlbumDir
+			print u'- Entre com o nome da pasta que será salvo os arquivos processados (se não houver, será criada), padrão: "%s"' % DestinoPadrao
+			q = raw_input()
+			if not q.strip():
+				q = DestinoPadrao
+			self.Destino = q
+
+		elif q == 'q':
+			# define self.Qualidade
+			print u'- Entre com a qualidade (1-100), padrão: %d%%' % QualPadrao
+			q = raw_input()
+			if not q.strip():
+				q = QualPadrao
+			# usuário tentando colocar qualidade inexistente
+			while self.myint(q) > 100 or self.myint(q) < 1:
+				print u'*** Qualidade "%d%%" impossível! Entre com o valor novamente' % self.myint(q)
+				q = raw_input()
+				if not q.strip():
+					q = QualPadrao
+			self.Qualidade = int(q)
+
+		elif q == 'z':
+			# define self.FazZip e self.NomeZip
+			StrZip = self.BooleanString(ZipPadrao)
+			print u'- Deseja criar um pacote Zip (s/n)? padrão: "%s"' % StrZip
+			q = raw_input()
+			if not q.strip():
+				q = str(ZipPadrao)
+			if q == "True" or q.strip().lower() == 's':
+				self.FazZip = True
+				print u'- Entre com o nome do pacote Zip a ser criado, padrão: "%s"' % ZipNomePadrao
+				q = raw_input()
+				if not q.strip():
+					q = ZipNomePadrao
+				self.NomeZip = q
+			else:
+				self.FazZip = False
+
+		elif q == 'a':
+			# define self.Album, self.AlbumCol, self.AlbumMiniSize e self.AlbumVisSize
+			print u'- Quantas colunas deseja que o álbum tenha? padrão: "%s"' % AlbumColPadrao
+			q = raw_input()
+			if not q.strip():
+				q = AlbumColPadrao
+			self.AlbumCol = self.myint(q)
+			print u'- Qual a largura da miniatura na página índice? padrão: "%s"' % AlbumMiniSizePadrao
+			q = raw_input()
+			if not q.strip():
+				q = AlbumMiniSizePadrao
+			while self.myint(q) < 1:
+				print u'*** Tamanho "%d" impossível! Entre com o valor novamente' % self.myint(q)
+				q = raw_input()
+				if not q.strip():
+					q = AlbumMiniSizePadrao
+			self.AlbumMiniSize = int(q)
+			print u'- Qual a largura da miniatura na página detalhada? padrão: "%s"' % AlbumVisSizePadrao
+			q = raw_input()
+			if not q.strip():
+				q = AlbumVisSizePadrao
+			while self.myint(q) < 1:
+				print u'*** Tamanho "%d" impossível! Entre com o valor novamente' % self.myint(q)
+				q = raw_input()
+				if not q.strip():
+					q = AlbumVisSizePadrao
+			self.AlbumVisSize = int(q)
+
+	def Inicia(self):
+		"""Função para iniciar a execução do programa com as rotinas padrões"""
+		inicio = self.time()
+
+		Arquivos = self.PegaArquivos(self.Origem)
+		# MontaAlbum retorna uma lista com os arquivos do álbum
+		Arquivos = (self.MontaAlbum(Arquivos))
+		if self.FazZip:
+			# Zipa todos os novos arquivos criados
+			self.Zipa(Arquivos)
+
+		# Resumo das operações
+		tempo = self.TempoLegivel(self.time() - inicio)
+		self.Termina(u'\n* Ações realizadas com sucesso em %s, finalizando *' % tempo)
+
+	def Legivel(self, tam):
+		"""Retorna uma string legível do espaço ocupado pelo arquivo 'tam'"""
+		i = 1
+		cont = 0
+		lista = ['b', 'kb', 'Mb', 'Gb']
+		while int(i) < abs(tam):
+			ret =  '%(tam).1f %(not)s' % {'tam' : tam / i, 'not' : lista[cont]}
+			i = i * 1024.0
+			cont = cont + 1
+		return ret
+
+	def Tam(self, Arquivo):
+		"""Retorna tamanho do arquivo Arquivo"""
+		from os.path import getsize
+
+		tam = getsize(Arquivo)
+		return tam
+
+	def TamDir(self, Dir):
+		"""Retorna o tamanho do diretório Dir"""
+		acumulador = 0
+		for i in Dir:
+			acumulador += self.Tam(i)
+		return acumulador
+
+	def pAlbumPagina(self, atual, total, arq, ArqMin, ArqMinRes, ArqVis, ArqVisRes, tempo):
+		"""Imprime uma string com informações requisitadas na self.MontaAlbumPagina()"""
+		print '%(atual)d/%(total)d - "%(arq)s" => [%(MinRes)s]%(MinTam)s - [%(VisRes)s]%(VisTam)s em %(tempo)s' % {
+			'atual'		: atual,
+			'total'		: total,
+			'arq'		: arq,
+			'MinRes'	: 'x'.join((str(i) for i in ArqMinRes)),
+			'MinTam'	: self.Legivel(self.Tam(ArqMin)),
+			'VisRes'	: 'x'.join((str(i) for i in ArqVisRes)),
+			'VisTam'	: self.Legivel(self.Tam(ArqVis)),
+			'tempo'		: tempo,
+			}
+
+	def ProcessaJpeg(self, ori, dest, NovaResolucao = ''):
+		"""Transforma em jpg a imagem ori com qualidade self.Qualidade em dest, podendo ser reduzida ao tamanho de largura NovaResolucao"""
+		from PIL import Image
+
+		f = Image.open(ori)
+		if NovaResolucao:
+			# NovaResolucao faz com que o tamanho da miniatura tenha a mesma proporção que na imagem original
+			# [largura, largura * alturaAntiga / larguraAntiga]
+			NovaResolucao = [NovaResolucao, int(NovaResolucao * float(f.size[1]) / f.size[0])]
+			f.thumbnail(tuple(NovaResolucao), resample=1) # 1 = ANTIALIAS
+		f.save(dest, "JPEG", quality=self.Qualidade)
+		return NovaResolucao
+
+	def PegaArquivos(self, fp):
+		"""Função que transforma retorna uma lista com os arquivos jpg (e bmp) da pasta fp passada como argumento"""
+		from glob import glob
+
+		Arquivos = glob(fp + '/*.[jJ][pP][gG]')
+		Arquivos.extend(glob(fp + '/*.[jJ][pP][eE][gG]'))
+		# o dicionário não vem organizado
+		Arquivos.sort()
+		return Arquivos
+
+	def CopiaArqs(self, Arquivos, Destino):
+		"""Copia os arquivos Arquivos para a pasta Destino"""
+		from os import mkdir, sep
+
+		# não foi achado arquivo para ser processado, exibindo msg de ajuda e finalizando
+		if not Arquivos:
+			self.Termina(u'Nenhum arquivo a ser copiado achado\n')
+
+		NovosArqs = []
+		for i in Arquivos:
+			inicio = self.time()
+			ArqNome = i.split(sep)[-1]
+			# Faz a localização do arquivo copiado ser inclusa na lista NovosArqs
+			NovosArqs.append(sep.join((Destino, ArqNome)))
+			FileP = open(NovosArqs[-1], 'w')
+			FileP.write(open(i,'r').read())
+			FileP.close()
+		return NovosArqs
+
+	def MontaAlbum(self, Arquivos):
+		"""Função que monta um álbum simples com os arquivos Arquivos, que devem ser .jpg"""
+		from os import mkdir
+		from glob import glob
+
+		inicio = self.time()
+		total = Arquivos.__len__()
+
+		# Verifica se há alguma foto para se fazer algum album:
+		if not Arquivos:
+			self.Termina(u'Não há fotos no diretório "%s" para que um álbum seja feito' % self.Destino)
+
+		# caso não haja o diretorio Destino, crie-o
+		if not glob(self.Destino):
+			try:
+				mkdir(self.Destino)
+			except IOError:
+				self.Termina(u'Impossível de criar a pasta "%s" (permissão negada)' % self.Destino)
+
+		NovosArqs = self.CopiaArqs(Arquivos, self.Destino)
+
+		# faz o index.html, função retorna uma lista de arquivos criados (index.html)
+		NovosArqs.extend(self.MontaAlbumIndice(Arquivos, total))
+		print u'Índice do álbum feito, processando página de cada foto:'
+		for i in range(total):
+			# faz as páginas individuais
+			# retorna as duas miniaturas criadas e a página .html dessa foto
+			NovosArqs.extend(self.MontaAlbumPagina(Arquivos, i, total))
+
+		# Resumo das operações
+		tempo = self.TempoLegivel(self.time() - inicio)
+		print u'\n*** Álbum com miniaturas ocuparam "%(tam)s". Construído em %(tempo)s' % {
+			'mini'	: self.AlbumMiniSize,
+			'tam'	: self.Legivel(self.TamDir(NovosArqs)),
+			'tempo'	: tempo,
+			}
+		return NovosArqs
+
+	def MontaAlbumIndice(self, Arquivos, total):
+		"""Auxiliar de MontaAlbum.\nFaz a página de índices das fotos"""
+		from os import sep
+
+		html = ['<center>', '<table>',]
+		EssaCol = 0
+		NovosArqs = []
+
+		for i in range(total):
+			# pega o nome do arquivo (retira diretório de origem, caso exista)
+			ArqNome = Arquivos[i].split(sep)[-1]
+			ArqSplit = ArqNome.split('.')
+			ArqSemExt = '.'.join(ArqSplit[:-1])
+			ArqHtm = ArqSemExt + '.htm'
+			# adiciona no nome da miniatura um _p + extensão
+			ArqNome = ArqSemExt + '_p.' + ArqSplit[-1]
+
+			# processa a página
+			if EssaCol == 0:
+				html.append('\t<tr>')
+			html.extend(['\t\t<td>', '\t\t<a href="%(htm)s"><img src="%(jpg)s" border="0"></a>' % {
+				'htm'	: ArqHtm,
+				'jpg'	: ArqNome,
+				}, '\t\t</td>',])
+			EssaCol += 1
+			if EssaCol == self.AlbumCol:
+				html.append('\t</tr>')
+				EssaCol = 0
+
+		html.extend(['</table>', '<h6>Feito por <a href="mailto:ra061358@students.ic.unicamp.br">Gustavo Scalet</a></h6>', '</center>',])
+
+		# salva esse html
+		NovosArqs.append(sep.join((self.Destino, 'index.html')))
+		try:
+			ArqP = open(NovosArqs[-1], 'w')
+			ArqP.write('\n'.join(html))
+			ArqP.close()
+		except IOError:
+			self.Termina(u'Impossível de criar a página "%s" (permissão negada)' % NovosArqs[-1])
+		return NovosArqs
+
+	def DefineAntProx(self, Arquivos, atual, total):
+		"""Retorna uma tupla com a string do arquivo anterior e posterior"""
+		from os import sep
+
+		# Define "Anterior"
+		if atual == 0:
+			# então esse é o primeiro arquivo, não há anterior
+			StrAnt = '\t\t&lt;'
+		else:
+			# faz o link para a página anterior
+			ArqAnt = Arquivos[atual-1].split(sep)[-1]
+			ArqAntSemExt = '.'.join(ArqAnt.split('.')[:-1])
+			StrAnt = '\t\t<a href="%s">&lt;</a>' % (ArqAntSemExt + '.html')
+		# Define "Próximo"
+		if atual == total-1:
+			# este é o último arquivo, não há próximo
+			StrProx = '\t\t&gt;'
+		else:
+			# faz o link para a página posterior
+			ArqProx = Arquivos[atual+1].split(sep)[-1]
+			ArqProxSemExt = '.'.join(ArqProx.split('.')[:-1])
+			StrProx = '\t\t<a href="%s">&gt;</a>' % (ArqProxSemExt + '.html')
+		return (StrAnt, StrProx)
+
+	def MontaAlbumPagina(self, Arquivos, atual, total):
+		"""Auxiliar de MontaAlbum.\nFaz a página de uma foto, com anterior e próxima e voltar"""
+		from os import sep
+
+		NovosArqs = []
+		inicio = self.time()
+		ArqNome = Arquivos[atual].split(sep)[-1]
+
+		StrMenu = '\t\t<a href="index.html">^</a>'
+		(StrAnt, StrProx) = self.DefineAntProx(Arquivos, atual, total)
+
+		html = ['<center>', '<table>', '\t<tr>', '\t\t<td valign="top">', StrMenu + '<br>',
+			StrAnt + '<br>', StrProx, '\t\t</td>', '\t\t<td>',]
+
+		ArqSplit = ArqNome.split('.')
+		ArqSemExt = '.'.join(ArqSplit[:-1])
+
+		# adiciona no nome da miniatura um _p + extensão
+		ArqMin = ArqSemExt + '_p.' + ArqSplit[-1]
+		# faz o caminho relativo do arquivo da miniatura e adiciona no NovosArqs
+		NovosArqs.append(sep.join((self.Destino, ArqMin)))
+		# faz a miniatura
+		ArqMinRes = self.ProcessaJpeg(Arquivos[atual], NovosArqs[-1], self.AlbumMiniSize)
+
+		# Análago ao de cima, mas com miniatura é _g + extensão
+		ArqVis = ArqSemExt + '_g.' + ArqSplit[-1]
+		NovosArqs.append(sep.join((self.Destino, ArqVis)))
+		ArqVisRes = self.ProcessaJpeg(Arquivos[atual], NovosArqs[-1], self.AlbumVisSize)
+
+		# então faça o link para a foto original
+		html.extend(['\t\t<a href="%(href)s"><img src="%(img)s" border="0"></a>' % {
+			'href'	: ArqNome,
+			'img'	: ArqVis,
+			}, '\t\t</td>', '\t</tr>', '</table>', '</center>',])
+
+		# salva esse html
+		# remove a extensão do arquivo e concatena '.html'
+		NovosArqs.append(sep.join((self.Destino, ArqSemExt + '.html')))
+		try:
+			ArqP = open(NovosArqs[-1], 'w')
+			ArqP.write('\n'.join(html))
+			ArqP.close()
+		except IOError:
+			self.Termina(u'Impossível de criar a página "%s" (permissão negada)' % NovosArqs[-1])
+
+		# Imprime resumo das operações
+		self.pAlbumPagina(atual, total, ArqNome, sep.join((self.Destino, ArqMin)), ArqMinRes, sep.join((self.Destino, ArqVis)), ArqVisRes, self.TempoLegivel(self.time() - inicio))
+		return NovosArqs
+
+	def Zipa(self, Arquivos):
+		"""Função para zipar a lista de arquivos Arquivos"""
+		from zipfile import ZipFile
+		from os import chdir, sep, getcwd
+
+		DirPadrao = getcwd()
+		# muda o diretório de trabalho para q todos os arquivos fiquem na raíz do primeiro arquivo
+		RaizPos = Arquivos[0].split(sep)[:-1]
+		Raiz = ''.join(RaizPos)
+		RaizPos = RaizPos.__len__()
+		Dir = sep.join((DirPadrao, Raiz))
+		chdir(Dir)
+
+		inicio = self.time()
+		try:
+			# abre o arquivo para escrita, modo append
+			z = ZipFile(self.NomeZip, mode="a", compression = 0)
+		except IOError:
+			try:
+				# abre o arquivo para escrita, criando um novo
+				z = ZipFile(self.NomeZip, mode="w", compression = 0)
+			except IOError:
+				self.Termina(u'Impossível de criar zip "%s" (permissão negada)' % self.NomeZip)
+
+		# para fazer o zip ter apenas arquivos na raíz:
+
+		for i in Arquivos:
+			# adiciona no pacote o caminho relativo a partir da raíz
+			z.write(sep.join(i.split(sep)[RaizPos:]))
+		z.close()
+
+		# Resumo das operações
+		tempo = self.TempoLegivel(self.time() - inicio)
+		print u'\n*** Pacote zip %(nome)s com %(tam)s criado com sucesso em %(tempo)s' % {
+			'nome'	: self.NomeZip,
+			'tam'	: self.Legivel(self.Tam(self.NomeZip)),
+			'tempo'	: tempo,
+			}
+		chdir(DirPadrao)
+
+
+if __name__ == "__main__":
+	# Algoritmo principal
+
+	# Executa a instância, fazendo todas as configurações
+	try:
+		foto = Foto()
+		if not ModoPadrao:
+			# Configura as pastas e opções
+			foto.Configura()
+		#Executa o programa com as opções escolhidas
+		foto.Inicia()
+	except (KeyboardInterrupt, EOFError,):
+		pass;

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# renom series files to a 's0xe0x.ext' format
+
+renomRegex "^.*\.[Ss](..)[Ee](..).*\.(...)$" 's\g<1>e\g<2>.\g<3>' * -w

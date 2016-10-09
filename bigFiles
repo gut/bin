@@ -1,0 +1,33 @@
+#!/bin/bash
+# *-* coding: iso8859-1 *-*
+
+# exibe os maiores arquivos do diretório corrente, pode aceitar os parâmetros:
+# $1 - tipo de arquivo (já será concatenado com * no começo)
+# $2 - número de registros a serem exibidos (padrão = 10)
+
+if [ "$1" == "--help" ]
+then
+	SCRIPTNAME=`echo $0 | sed -e 's/.*\///g'`
+	echo "[31m[1mUSO: $SCRIPTNAME [tipo_de_arquivo] [numero de registros][0m"
+	exit
+elif [ "$1" ]
+then
+	filetype="*$1*"
+else
+	filetype="*"
+fi
+
+if [ "$2" ]
+then
+	rownb="$2"
+else
+	rownb="10"
+fi
+
+
+#Gambiarra
+echo "[31m[1mCOMANDO: du $filetype | sort -rn | head -n $rownb[0m"
+du $filetype | sort -rn | head -n $rownb
+
+#echo "*** Exibindo $rownb arquivos tipo $filetype por ordem de tamanho descendente"
+#du `pwd`/"$filetype" -h | sort -rn | head -n $rownb

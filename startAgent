@@ -1,0 +1,31 @@
+#!/bin/bash
+# Use: -f to force initialization
+
+# from http://help.github.com/working-with-key-passphrases/
+
+SSH_ENV="$HOME/.ssh/environment"
+
+function force_start_agent {
+	echo " * Initializing new SSH agent..."
+	/usr/bin/ssh-agent | sed 's/^echo/#echo/' > "${SSH_ENV}"
+	chmod 600 "${SSH_ENV}"
+	. "${SSH_ENV}" > /dev/null 
+}
+
+if ([ "$1" == "--help" ] || [ "$1" == "-h" ]); then
+	echo "Usage: $0 [-h --help] [-f --force]"
+	exit 1
+fi
+
+if [ "$1" == "-f" ] || [ "$1" == "--force" ]; then
+	force_start_agent;
+# Source SSH settings, if applicable
+elif [ -f "${SSH_ENV}" ]; then
+	. "${SSH_ENV}" > /dev/null 
+	ps ${SSH_AGENT_PID} > /dev/null || {
+		force_start_agent;
+	}
+else
+	force_start_agent;
+fi
+

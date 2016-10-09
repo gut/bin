@@ -1,0 +1,129 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+Batch de encode de audio para mp3 (usa lame e/ou flac)
+Autor: Gustavo Serra Scalet
+Licença: GPL
+
+Checa arquivos *.{wav, mp3, flac, m4a, wma} e transforma-os para mp3 CBR com bitrate
+igual a 'bitrate' (ou argv[1]) usando a tag -h de alta qualidade do lame
+"""
+
+# bitrate padrão
+bitrate = 192
+# diretório temporário aonde estarão a fila de arquivos a serem encodados
+tmpDir = 'tmp'
+
+
+def encodaDir(esteDir = '', br = bitrate):
+    """Encoda o diretório passado por parâmetro para mp3"""
+    from subprocess import call
+    from time import time
+    from glob import glob
+    from os import rename, unlink, rmdir, path, listdir, sep
+    def changeExtension(s, new):
+        """Returns the new @s with the new extension @new"""
+        sp = s.split(".")
+        sp[-1] = new
+        return ".".join(sp)
+
+    # pegando os áudios suportados
+    arqs = glob(path.join(esteDir,'*.[mM][pP]3'))
+    arqs.extend(glob(path.join(esteDir,'*.[Ww][Aa][Vv]')))
+    arqs.extend(glob(path.join(esteDir,'*.[Ff][Ll][Aa][Cc]')))
+    arqs.extend(glob(path.join(esteDir,'*.[mM]4[Aa]')))
+    arqs.extend(glob(path.join(esteDir,'*.[wW][mM][Aa]')))
+    # ordenando para uma saída melhor
+    arqs.sort()
+    flag = True
+    for arq in arqs:
+        arqTmp = path.join(tmpDir, arq.split(sep)[-1])
+        rename (arq, arqTmp)
+        # encodando
+        if arq.lower().endswith('flac'):
+            # transforma para wav primeiro
+            arqWav = changeExtension(arqTmp, 'wav')
+            retorno = call(['flac', '-d', arqTmp,])
+            if not retorno:
+                # deu tudo certo transformando flac=>wave, removendo o flac
+                unlink(arqTmp)
+                arqTmp = arqWav
+            else:
+                raise IOError, (retorno, "Flac: arquivo %s" % arqTmp)
+            arqNovo = changeExtension(arq, 'mp3')
+        elif arq.lower().endswith('m4a') or arq.lower().endswith('wma'):
+            # transforma para wav primeiro
+            arqWav = changeExtension(arqTmp, 'wav')
+            retorno = call(['mplayer', '-quiet', '-ao', 'pcm:file=' + arqWav, arqTmp,])
+            if not retorno:
+                # deu tudo certo transformando (m4a|wma)=>wave, removendo o (m4a|wma)
+                unlink(arqTmp)
+                arqTmp = arqWav
+            else:
+                extension = arq.lower().split('.')[-1]
+                raise IOError, (retorno, "%s: arquivo %s" % (extension, arqTmp))
+            arqNovo = changeExtension(arq, 'mp3')
+        elif arq.lower().endswith('wav'):
+            arqNovo = changeExtension(arq, 'mp3')
+        elif arq.lower().endswith('mp3'):
+            arqNovo = arq
+
+        # não deverá existir, mas se houver, por ex, ['a.mp3','a.flac',],
+        # haverá dois a.mp3 no fim
+        if glob(arqNovo) != []:
+            arqNovo = arqNovo[:-4] + '_.mp3'
+            arqNovo = changeExtension(arqNovo, '_mp3')
+        retorno = call(['lame', '-h', '-b %d' % br, arqTmp, arqNovo,])
+        # se tudo ocorreu Ok, removendo o arquivo antigo
+        if not retorno:
+            unlink(arqTmp)
+        else:
+            # deu erro, restaurando o arquivo antigo
+            unlink(arqNovo)
+            rename(arqTmp, arqNovo)
+            raise IOError, (retorno, "Lame: arquivo %s" % arqNovo)
+    if flag:
+        # então deu tudo certo e o diretório temporário será removido
+        if listdir(tmpDir) == []:
+            # diretório vazio, apague-o
+            rmdir(tmpDir)
+        call(['mpg123', '--quiet', '/home/gut/bin/snd/excellent.mp3',
+            '/home/gut/bin/snd/explosion.mp3'])
+    return flag
+
+
+if __name__ == '__main__':
+    from os import mkdir
+    from sys import argv
+
+    # tentando pegar o bitrate por argv
+    try:
+        br = int(argv[1])
+    except ValueError:
+        print 'O Argumento passado deve ser o bitrate (um inteiro)'
+        br = False
+    except IndexError:
+        br = bitrate
+    if br:
+#         try:
+                # tenta criar o diretório temporário (modo drwx------)
+                try:
+                    mkdir (tmpDir, 0700)
+                except OSError, (erroNo, erroStr):
+                    if erroNo != 17:
+                        # erro diferente de diretório existente, propague
+                        raise OSError, (erroNo, erroStr)
+                if encodaDir('', br):
+                    print '\nArquivos do diretório encodados com sucesso'
+                else:
+                    print '\nErro na execução do script'
+#         except IOError, (erroNo, erroStr):
+#             print 'Retorno de erro IO: %d, "%s"' % (erroNo, erroStr)
+#         except OSError, (erroNo, erroStr):
+#             print 'Retorno de erro de OS: %d, "%s"' % (erroNo, erroStr)
+#         except KeyboardInterrupt:
+#             print '\nAbortando...'
+        #except:
+            #print '\nFalha desconhecida'
+

@@ -1,0 +1,212 @@
+#!/usr/bin/env python2
+# *-* coding: iso8859-1 *-*
+
+"""
+Autor: Gustavo Serra Scalet (gsscalet@gmail.com)
+Licença de uso: GPL
+Ultima atualização: 29/01/2006 (v1.0)
+
+Descrição: Script que renomeia os arquivos do diretório escolhido
+ordenados alfabeticamente em um formato numérico escolhido
+"""
+
+# ==============
+# Opções padrao:
+# ==============
+# mude o valor 'True' para 'False' caso a resposta seja 'não'
+
+# Deseja que o programa sempre seja executado com essas informações?
+# * Caso 'False' o programa irá disponibilizar a mudança dos parâmetros na inicialização
+ModoPadrao		= False
+# Pasta a qual os arquivos serão processados ('.' será a pasta atual)
+PastaPadrao		= '.'
+# Quantas casas fixas terá o novo nome do arquivo?
+RenCasasPadrao	= 3
+# Começar de que número?
+RenInicioPadrao	= 1
+# Deseja filtrar as extensões? Coloque a extensão entre aspas ('*' será todos os arquivos)
+ExtPadrao		= '*'
+
+class Renom(object):
+	"""Classe capaz de renomear os arquivos dela segundo um formato numérico"""
+
+	def __init__(self):
+		"""Configurações padrão do programa"""
+		from os import sep
+
+		print u"""Renomeador de arquivos para formato numérico\n=============================\nAutor: Gustavo Serra Scalet (gsscalet@gmail.com)\nLicença de uso: GPL\n"""
+		self.Pasta	= PastaPadrao
+		self.Pat	= RenCasasPadrao
+		self.Ini	= RenInicioPadrao
+		self.Ext	= ExtPadrao
+
+	def __del__(self):
+		#"""Apenas um raw_input() para que o usuário possa ler a saída do programa""" 
+		print u'\nPressione Enter para sair'
+		raw_input()
+
+	def Termina(self, txt):
+		"""Chamada a finalização do programa, erros ou padrao, imprime mensagem caso necessário"""
+		from sys import exit
+		print txt
+		exit()
+
+	def BooleanString(self, bool):
+		"""Retorna caractere 's' se bool for verdadeira e 'n' se falso"""
+		if bool:
+			return 's'
+		else:
+			return 'n'
+
+	def myint(self, i):
+		"""Evitar que o int(i) cause o erro ValueError. Se nao for encontrado, retorne 1"""
+		try:
+			return int(i)
+		except ValueError:
+			return 1
+
+	def Configura(self):
+		"""Lê as variáveis que serão usadas na execução"""
+		q = 'iniciado'
+		FirstLoop = True
+		while q != '':
+			if not FirstLoop:
+				self.ConfiguraRedefine(str(q).lower())
+
+			# Confirmação
+			if FirstLoop:
+				print u'Configuracoes padrao:'
+			else:
+				print u'\nConfiguracoes estabelecidas:'
+			print u'o) Pasta a ser processada: "%s"' % self.Pasta
+			# fazendo uma string ter numero de zeros = self.Pat-1,
+			# terminando com self.Ini + '.jpg'
+			print u'r) Novos arquivos serao renomeados a partir de "%s"' % (
+				''.join ("0" for i in range(self.Pat - len(str(self.Ini)))) + str(self.Ini) + '.jpg')
+			print u'e) Renomear apenas arquivos com a extensao "%s"' % self.Ext
+
+			print u'\nEntre com a letra relacionada a opcao desejada ou apenas enter para iniciar:'
+			q = raw_input()
+			FirstLoop = False
+
+	def ConfiguraRedefine(self, q):
+		"""Redefine a configuracao 'q' entrada pelo usuario"""
+		from os import sep
+
+		if q == 'r':
+			# define self.Pat e self.Ini
+			print u'- Entre com o numero de casas fixas, padrao: "%s"' % RenCasasPadrao
+			q = raw_input()
+			if not q.strip():
+				q = RenCasasPadrao
+			while self.myint(q) < 1:
+				print u'*** Numero de casas "%d" impossivel! Entre com o valor novamente' % self.myint(q)
+				q = raw_input()
+				if not q.strip():
+					q = RenCasasPadrao
+			self.Pat = int(q)
+			print u'- Entre com o primeiro numero da sequencia, padrao: "%s"' % RenInicioPadrao
+			q = raw_input()
+			if not q.strip():
+				q = RenomInicioPadrao
+			self.Ini = self.myint(q)
+		if q == 'e':
+			# define self.Ext
+			print u'- Entre com o filtro de extensao, padrao: "%s"' % ExtPadrao
+			q = raw_input()
+			if not q.strip():
+				q = ExtPadrao
+			self.Ext = q
+
+	def Inicia(self):
+		"""Função para iniciar a execução do programa com as rotinas padrões"""
+		self.RenomeiaDir()
+		self.Termina(u'\n* Acoes realizadas com sucesso')
+
+	def PegaDest(self, Arquivos, ori):
+		"""Retorna o nome do arquivo destino do arquivo de origem 'ori'"""
+		from os import sep
+
+		nb = ('%0' + str(self.Pat) + 'd') % (
+			self.Ini + Arquivos.index(ori))
+
+		# pega extenção
+		ext = ori.split('.')[-1]
+		# monta o caminho correto
+		return sep.join((self.Pasta, nb + '.' + ext))
+
+	def pDet(self, Atual, Total, ThisOri, ThisDest):
+		"""Imprime uma string com tamanho dos arquivos e tempo do processamento"""
+		print '%(Atual)03d/%(Total)03d - %(ONome)s => %(DNome)s' % {
+			'Atual' : Atual,
+			'Total' : Total,
+			'ONome' : ThisOri,
+			'DNome' : ThisDest,
+			}
+
+	def PegaArquivos(self, fp, ext='*'):
+		"""Função que transforma retorna uma lista com os arquivos de extenção ext da pasta fp passada como argumento"""
+		from glob import glob
+		from os import sep
+
+		# faz string '[jJ][pP][gG]' qndo ext for 'jpg'
+		minMai = []
+		for letra in ext:
+			if letra.isalpha():
+				minMai.append('[' + letra.lower() + letra.upper() + ']')
+			else:
+				minMai.append(letra)
+		globStr = '*.' + ''.join(minMai)
+		Arquivos = glob(sep.join((fp, globStr)))
+		# a lista não vem organizada
+		Arquivos.sort()
+		return Arquivos
+
+	def RenomeiaDir(self):
+		"""Renomeia os arquivos do diretório self.Pasta, usando as opções configuradas"""
+		from os import rename, sep
+		from sys import argv
+
+		# criará o self.arquivos com os arquivos do diretório de pasta
+		Arquivos = self.PegaArquivos(self.Pasta, self.Ext)
+
+		# não foi achado arquivo para ser processado, exibindo msg de ajuda e finalizando
+		if not Arquivos:
+			self.Termina(u'Nenhum arquivo a ser processado achado na pasta "%s"\n' % self.Pasta)
+
+		# processa todo e cada arquivo
+		ArquivosProcessados = []
+		for i in Arquivos:
+			ArquivosProcessados.append(self.PegaDest(Arquivos, i))
+			try:
+				# não remova o script (na vdd o arquivo com mesmo nome do script)
+				if i.find(argv[0].split(sep)[-1]) == -1:
+					rename(i, ArquivosProcessados[-1])
+					self.pDet(Arquivos.index(i)+1, Arquivos.__len__(), i, ArquivosProcessados[-1])
+				else:
+					# tentou renomear o script
+					print '%(Atual)03d/%(Total)03d - %(ONome)s => [PROTEGIDO]' % {
+						'Atual' : Arquivos.index(i)+1,
+						'Total' : Arquivos.__len__(),
+						'ONome' : i,
+						}
+			except IOError:
+				self.Termina(u'Impossivel de renomear o arquivo "%s" (permissao negada)' % i)
+
+		# finaliza
+		return
+
+if __name__ == "__main__":
+	# Algoritmo principal
+
+	# Executa a instância, fazendo todas as configurações
+	try:
+		ren = Renom()
+		if not ModoPadrao:
+			# Configura as opções
+			ren.Configura()
+		# Executa o programa com as opções escolhidas
+		ren.Inicia()
+	except (KeyboardInterrupt, EOFError,):
+		pass;
+

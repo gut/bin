@@ -1,0 +1,68 @@
+#!/usr/bin/env python
+# *-* coding: iso8859-1 *-*
+
+"""Programa para aumentar os espaços da identação:
+ele detecta qntos espaços há no começo de cada linha
+e aumenta numa razão de 1 tab por indentação"""
+
+from sys import argv, exit
+
+if argv.__len__() < 3:
+    print '*** Coloque algum arquivo de entrada e de saída'
+    exit()
+
+try:
+    lines = open(argv[1]).read().splitlines()
+except IOError:
+    print '*** Nao foi possível ler o arquivo %s' % argv[1]
+    exit()
+
+print ">> Lendo o arquivo %s" % argv[1]
+
+levels = [0]
+newLines = []
+for thisLine in lines:
+    spaceCount = 0
+    if thisLine.startswith('\t'):
+        break
+    while thisLine.startswith(' '):
+        spaceCount += 1
+        thisLine = thisLine[1:]
+    if spaceCount not in levels:
+        levels.append(spaceCount)
+        levels.sort()
+    newSpace = levels.index(spaceCount) * '\t'
+    newLines.append(newSpace + thisLine.strip())
+
+if thisLine.startswith('\t'):
+    print '%s Corrompido? Tem tabs' % argv[1]
+else:
+    # simplificando!
+    """
+    newSimplifiedLines = []
+    lastTabCount = 0
+    tabNumber = 0
+    for thisLine in newLines:
+        tabCount = 0
+        while thisLine.startswith('\t'):
+            tabCount += 1
+            thisLine = thisLine[1:]
+        if tabCount > 0 or (len(thisLine) and thisLine[0] == "#"):
+            if lastTabCount > tabCount:  # desindenta
+                tabNumber -= 1
+            elif lastTabCount < tabCount:  # indenta
+                tabNumber += 1
+            lastTabCount = tabCount
+        newSpace = tabNumber * '\t'
+        newSimplifiedLines.append(newSpace + thisLine)
+    print '\n'.join(newSimplifiedLines)
+    """
+    try:
+        newfile = open(argv[2],'w')
+        newfile.write('\n'.join(newLines))
+        newfile.write('\n')  # files usually must have a linebreak at the end
+    except IOError:
+        print '*** Nao foi possível escrever no arquivo %s' % argv[2]
+    finally:
+        newfile.close()
+

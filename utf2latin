@@ -1,0 +1,9 @@
+#! /bin/bash
+# *-* coding: iso8859-1 *-*
+
+# script q pega os parametros $x da chamada e converte de utf-8 
+# para iso-8859-1, renomeando o arquivo com um prefixo
+for i in $*
+do
+	iconv -t ISO-8859-1 -f UTF-8 "$i" > "iso-$i"
+done

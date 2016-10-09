@@ -1,0 +1,91 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+#  Copyright (C) 2011 - Gustavo Serra Scalet <gsscalet@gmail.com>
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+__AUTHOR__ = "Gustavo Serra Scalet <gsscalet@gmail.com>"
+__VERSION__ = 0.1
+
+"""
+Checks if internet is online or not. Sounds when event changes, prints out
+when debouncing
+"""
+
+tempo = 2
+urlTeste = 'http://hasthelargehadroncolliderdestroyedtheworldyet.com'
+sndCaido = '/home/gut/bin/snd/ooh.mp3'
+sndVoltou = '/home/gut/bin/snd/ahh.mp3'
+
+from subprocess import call
+from urllib2 import urlopen
+from time import sleep, strftime
+
+class StateMachine(object):
+    DEBOUNCE_ON = 3
+    DEBOUNCE_OFF = 2
+
+    def __init__(self, state = 0):  # 0 is offline
+        self.state = state
+        self.debounce = 0
+        print 'Debounce reset to %s!' % 'online' if state else 'offline'
+
+    def doDebounce(self, state):
+        """Debounce @state.
+        Return value: True if state changed. False otherwise"""
+        if state == self.state:
+            # nothing happens
+            self.debounce = 0
+            return False
+
+        # state != self.state:
+        if self.debounce < (StateMachine.DEBOUNCE_ON if state else StateMachine.DEBOUNCE_OFF):
+            self.debounce += 1
+            print '%s: %s counter going up %d' % (
+                strftime("%c"),
+                'online' if state else 'offline',
+                self.debounce
+            )
+            return False
+
+        # just debounced!
+        self.__init__(state)
+        return True
+
+if __name__ == "__main__":
+    sm = StateMachine()
+    while True:
+        try:
+            urlopen(urlTeste, timeout=2)
+            # google é encontrado
+            if sm.doDebounce(True):
+                # estava caído o link
+                print '\tOnline!'
+                call(['mpg123', '--quiet', sndVoltou])
+
+            sleep(tempo)
+        except IOError:
+            # não encontrou o google?!
+            if sm.doDebounce(False):
+                # link caiu
+                print '\toffline...'
+                call(['mpg123', '--quiet', sndCaido])
+
+            # espere o tempo para repetir o ciclo
+            sleep(tempo)
+        except KeyboardInterrupt:
+            print 'Abort...'
+            break
+

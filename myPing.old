@@ -1,0 +1,65 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+Testador de link da internet
+Autor: Gustavo Serra Scalet
+Licença: GPL
+
+Verifica a cada 'tempo' segundos se o link 'urlTeste' pode ser
+encontrado, se não foi, toca o som 'sndCaido' e quando voltar o som 'sndVoltou'
+"""
+
+tempo = 2
+urlTeste = 'http://hasthelargehadroncolliderdestroyedtheworldyet.com'
+sndCaido = '/home/gut/bin/snd/ooh.mp3'
+sndVoltou = '/home/gut/bin/snd/ahh.mp3'
+
+from subprocess import call
+from urllib2 import urlopen
+from time import sleep, strftime
+
+debounce = {'timer' : 0, 'on' : 3, 'off' : 2}
+state = 'offline'
+
+def isDebounced(limit):
+    if debounce['timer'] < limit:
+        debounce['timer'] += 1
+    else:
+        return True
+    return False
+
+while True:
+    try:
+        urlopen(urlTeste, timeout=2)
+        # google é encontrado
+        if state == 'offline':
+            if isDebounced(debounce['on']):
+                # estava caído o link
+                print 'Voltou às %s' % strftime("%c")
+                call(['mpg123', '--quiet', sndVoltou])
+
+                debounce['timer'] = 0
+                state = 'online'
+        else:
+            debounce['timer'] = 0
+        # espere o tempo para repetir o ciclo
+        sleep(tempo)
+    except IOError:
+        # não encontrou o google?!
+        if state == 'online':
+            if isDebounced(debounce['off']):
+                # link caiu
+                print 'Caiu às %s' % strftime("%c")
+                call(['mpg123', '--quiet', sndCaido])
+
+                debounce['timer'] = 0
+                state = 'offline'
+        else:
+            debounce['timer'] = 0
+        # espere o tempo para repetir o ciclo
+        sleep(tempo)
+    except KeyboardInterrupt:
+        print 'Abortando...'
+        break
+

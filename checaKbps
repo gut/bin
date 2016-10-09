@@ -1,0 +1,113 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+Autor: Gustavo Serra Scalet (gsscalet@gmail.com)
+Licença de uso: GPL
+Ultima atualização: 09/03/2007 (v1.1)
+
+Descrição: Retorna os diretórios com mp3 com:
+    * 128kbps < bitrate CBR > 192kbps
+    * VBR < 128kbps > 265 kbps
+    * Inválido
+"""
+
+# ==============
+# Opções Padrão:
+# ==============
+# mude o valor 'True' para 'False' caso a resposta seja 'não'
+
+def PegaDirs(Dir = '.', DirVisitado = []):
+    """Pega os diretórios a partir do atual recursivamente"""
+    from glob import glob
+    from os import sep, listdir
+    from os.path import isdir
+
+    # evitando com q entre várias vezes no msmo diretório
+    for i in DirVisitado:
+        if (i == Dir):
+            return []
+    DirVisitado.append(Dir)
+
+    arqs = listdir(Dir)
+    dirs = []
+    for i in arqs:
+        # evitando com q todos os diretórios fiquem ./blabla
+        if Dir == '.':
+            camRel = i
+        else:
+            camRel = sep.join((Dir, i))
+        if isdir(camRel):
+            dirs.append(camRel)
+    # agora dirs possui os diretórios novos, faça a recursão
+    if dirs:
+        for eachDir in dirs:
+            # pega apenas os diretórios no glob
+            dirs.extend(PegaDirs(eachDir))
+    return dirs
+
+def PegaArqs(Dir, ext = 'mp3'):
+    """Retorna uma lista com os arquivos de extensão self.ext desse diretório"""
+    from os import sep, listdir
+    from os.path import isfile
+
+    todosArqs = listdir(Dir)
+    arqs = []
+    for i in todosArqs:
+        if isfile(sep.join((Dir, i,))):
+            if ext == '*':
+                arqs.append(i)
+            elif ext == i.split('.')[-1]:
+                arqs.append(i)
+    arqs.sort(key=str.lower)
+    #print arqs
+    return arqs
+
+def adiciona(l, d):
+    """Adiciona diretório d na lista l, mas deixa apenas uma ocorrência de d"""
+    if l.count(d) == 0:
+        l.append(d)
+
+if __name__ == "__main__":
+    # Algoritmo principal
+    from eyeD3 import isMp3File, Mp3AudioFile
+    from os import sep
+    from re import sub
+    from sys import exit
+
+    dirs = PegaDirs()
+    total = dirs.__len__()
+    dirsAcima = []
+    for i in dirs:
+        # para todo diretório...
+        print '(%s/%s) Entrando no diretório %s' % (
+            dirs.index(i) + 1,
+            total,
+            i,
+            )
+        for j in PegaArqs(i):
+            # para todo arquivo...
+            try:
+                if isMp3File(sep.join((i,j))):
+                    tag = Mp3AudioFile(sep.join((i,j)))
+                    br = tag.getBitRateString()
+                    vbr = (br[0] == '~')
+                    if vbr:
+                        br = br[1:]
+                    brInt = int(sub('([0-9]{1,3}).*','\\1',br))
+                    if brInt < 128 or (not vbr and brInt > 192) or (vbr and brInt > 265):
+                        print "%(br)s %(mode)s - %(arq)s" % {
+                            'br' : br,
+                            'mode' : 'VBR' if vbr else 'CBR',
+                            'arq' : j,
+                            }
+                        adiciona(dirsAcima, i)
+            except:
+                print 'Arquivo Inválido - %(arq)s' % {
+                    'arq' : j,
+                    }
+                adiciona(dirsAcima, i)
+    print '\nDiretórios VBR ou com bitrate CBR < 128 kbps ou > 192 kb/s ou bitrate inválido:'
+    for i in dirsAcima:
+        print i
+

@@ -1,0 +1,1 @@
+/home/gut/.vim/pydiction-1.2/pydiction.py
