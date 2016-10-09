@@ -1,0 +1,3 @@
+[submodule "pics_arranger"]
+	path = pics_arranger
+	url = git@github.com:gut/pics_arranger.git
