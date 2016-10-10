@@ -43,13 +43,14 @@ class autoid3:
     Tries to match by the latest directories:
     .../[Genre]/Artist/[Year, ]Album [DiscNum]/TrackNum - Title.mp3
     Has the optional -g option to specify Genre.
+    Has the optional -a option to specify Artist.
     """
 
     def __init__(self, filename, regex):
         self.__filename = path.realpath(filename)
         self.__regex = regex
 
-    def analyze(self, genre = ""):
+    def analyze(self, artist = "", genre = ""):
         print "Analysing '%s'" % self.__filename
         if not eyeD3.isMp3File(self.__filename):
             raise Exception, "File is not a Mp3 file"
@@ -86,6 +87,10 @@ class autoid3:
             g = g.split(', ')
             g.reverse()
             self.__new_tags["Genre"] = ' '.join(g)
+
+        if artist:
+            self.__new_tags["Artist"] = artist
+
 
     def getOldTag(self, key):
         return getUtf8String(self.__old_tags, key)
@@ -167,6 +172,9 @@ if __name__ == "__main__":
         'g' : ['genre',
             "Insert this genre on this file",
             ""],
+        'a' : ['artist',
+            "Insert this artist on this file",
+            ""],
         'f' : ['force',
             "Force tag writting even if it has the same tag already",
             False],
@@ -210,9 +218,10 @@ Try `%s --help' for more information""" % args[0].split(sep)[-1]
 
     for arg in files:
         id3 = autoid3(arg, r)
+        artist = opt.a
         genre = opt.g
         try:
-            id3.analyze(genre)
+            id3.analyze(artist, genre)
         except:
             print "Error: ", sys.exc_info()[1]
             if not opt.q:
