@@ -28,7 +28,7 @@ DESIRED_TAGS = ('Album', 'Artist', 'DiscNum', 'Genre', 'Title', 'TrackNum', 'Yea
 _COMMENT = "Tagged by %s v%s from %s" % (path.basename(__file__), __VERSION__, __AUTHOR__)
 
 __sepd = {'sep' : path.sep}
-_REGEX_TEXT_DIRECTORY = r"%(sep)s(?P<Artist>[^%(sep)s]+)%(sep)s((?P<Year>\d{4}), )?(?P<Album>[^%(sep)s]+?)( (?P<DiscNum>\d{2}))?%(sep)s(?P<TrackNum>\d{2}) - (?P<Title>[^%(sep)s]+)\.[mM][pP]3$" % __sepd
+_REGEX_TEXT_DIRECTORY = r"%(sep)s(?P<Genre>[^%(sep)s]+)%(sep)s(?P<Artist>[^%(sep)s]+)%(sep)s((?P<Year>\d{4}), )?(?P<Album>[^%(sep)s]+?)( (?P<DiscNum>\d{2}))?%(sep)s(?P<TrackNum>\d{2}) - (?P<Title>[^%(sep)s]+)\.[mM][pP]3$" % __sepd
 # only work with the file basename: .*%(sep)s
 _REGEX_TEXT_FILENAME = r".*%(sep)s(?P<Artist>[^-]+) - ((?P<Year>\d{4}), )?(?P<Album>[^-]+?)( (?P<DiscNum>\d{2}))? - (?P<TrackNum>\d{2}) - (?P<Title>[^-]+)\.[mM][pP]3$" % __sepd
 
@@ -41,7 +41,7 @@ class autoid3:
     some argument, use these files) and fill it's id3 data with its filename
     properties.
     Tries to match by the latest directories:
-    .../Artist/[Year, ]Album [DiscNum]/TrackNum - Title.mp3
+    .../[Genre]/Artist/[Year, ]Album [DiscNum]/TrackNum - Title.mp3
     Has the optional -g option to specify Genre.
     """
 
@@ -71,11 +71,21 @@ class autoid3:
             else:  # to unicode
                 self.__new_tags[key] = d[key].decode("utf8") if d[key] else ""
 
-        # but we still miss the genre
-        genre_obj = eyeD3.Genre()
-        # following line may throw eyeD3.GenreException. Let it be propagated
-        genre_obj.parse(genre)
-        self.__new_tags["Genre"] = genre  # genre must be str, not unicode (setGenre requirement)
+            # but we still miss the genre
+            genre_obj = eyeD3.Genre()
+            # parsing it may throw eyeD3.GenreException. Let it be propagated
+        if genre:
+            genre_obj.parse(genre)
+            # genre must be str, not unicode (setGenre requirement)
+            self.__new_tags["Genre"] = genre
+        else:
+            genre_obj.parse(self.__new_tags["Genre"])
+            # can't handle unicode...
+            # Also my genres are comma separated, fix it
+            g = str(self.__new_tags["Genre"])
+            g = g.split(', ')
+            g.reverse()
+            self.__new_tags["Genre"] = ' '.join(g)
 
     def getOldTag(self, key):
         return getUtf8String(self.__old_tags, key)
