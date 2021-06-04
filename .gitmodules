@@ -1,3 +1,6 @@
 [submodule "pics_arranger"]
 	path = pics_arranger
 	url = git@github.com:gut/pics_arranger.git
+[submodule "diff-so-fancy"]
+	path = diff-so-fancy
+	url = https://github.com/so-fancy/diff-so-fancy
