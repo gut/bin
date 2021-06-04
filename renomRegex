@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 #  Copyright (C) 2010 - Gustavo Serra Scalet <gsscalet@gmail.com>
@@ -37,10 +37,9 @@ class renomRegex:
 
     def addFile(self, f):
         if not path.isfile(f) and not path.isdir(f):
-            raise Exception, "File '%s' was not found" % f
-        f_unicoded = f.decode('utf8')
-        self.__old_files.append(f_unicoded)
-        self.__new_files.append(self.__regex.sub(self.__sub, f_unicoded))
+            raise Exception("File '%s' was not found" % f)
+        self.__old_files.append(f)
+        self.__new_files.append(self.__regex.sub(self.__sub, f))
 
     def isUpdatable(self):
         return self.__new_files != self.__old_files
@@ -51,19 +50,20 @@ class renomRegex:
                 try:
                     rename(old, new)
                 except:
-                    print "Failed on file '%s' to '%s'" % (old, new)
+                    print("Failed on file '%s' to '%s'" % (old, new))
                     return False
         return True
 
     def dump(self):
-        print "Dumping the internal structures:"
-        print "old: %s\nnew: %s" % (repr(self.__old_files), repr(self.__new_files))
+        print("Dumping the internal structures:")
+        print("old: %s\nnew: %s" % (repr(self.__old_files),
+                                    repr(self.__new_files)))
 
     # iteration properties
     __last_index = 0
     def __iter__(self):
         return self
-    def next(self):
+    def __next__(self):
         if self.__last_index == len(self.__old_files):  # ready to reset
             self.__last_index = 0
             raise StopIteration
@@ -111,8 +111,8 @@ if __name__ == "__main__":
     (opt, args) = parser.parse_args(argv)
     if len(args) < MIN_ARGS + 1:
         # not enough arguments
-        print """ERROR: not enough arguments.
-Try `%s --help' for more information""" % args[0].split(sep)[-1]
+        print("""ERROR: not enough arguments.
+Try `%s --help' for more information""" % args[0].split(sep)[-1])
         exit(1)
 
     renamer = renomRegex(args[1], args[2])
@@ -124,24 +124,23 @@ Try `%s --help' for more information""" % args[0].split(sep)[-1]
 
     if not renamer.isUpdatable():
         if not opt.q:
-            print "No new file to rename"
+            print("No new file to rename")
         exit(2)
 
     if not opt.q:
-        print "At least one file can be updated:"
+        print("At least one file can be updated:")
         for old, new in renamer:
             if old != new:
-                print " %s => %s" % (old, new)
-        print
+                print(" %s => %s" % (old, new))
 
     if opt.w:
         if not renamer.writeChanges():
-            print "Writing on one file failed!"
+            print("Writing on one file failed!")
             exit (3)
 
         if not opt.q:
-            print "Hope you made the correct replacement ;-)"
+            print("Hope you made the correct replacement ;-)")
     else:
-        print " (use the --write option to write the changes)"
+        print(" (use the --write option to write the changes)")
     exit(0)
 
