@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 #  Copyright (C) 2010 - Gustavo Serra Scalet <gsscalet@gmail.com>
@@ -17,23 +17,20 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 __AUTHOR__ = "Gustavo Serra Scalet <gsscalet@gmail.com>"
-__VERSION__ = "0.6"
+__VERSION__ = "0.7"
 
-import re, eyeD3, sys
+import re, eyed3, sys
 from os import path
 
 MIN_ARGS = 0
 
-DESIRED_TAGS = ('Album', 'Artist', 'DiscNum', 'Genre', 'Title', 'TrackNum', 'Year')
+DESIRED_TAGS = ('album', 'artist', 'disc_num', 'genre', 'title', 'track_num', 'year')
 _COMMENT = "Tagged by %s v%s from %s" % (path.basename(__file__), __VERSION__, __AUTHOR__)
 
-__sepd = {'sep' : path.sep}
-_REGEX_TEXT_DIRECTORY = r"%(sep)s(?P<Genre>[^%(sep)s]+)%(sep)s(?P<Artist>[^%(sep)s]+)%(sep)s((?P<Year>\d{4}), )?(?P<Album>[^%(sep)s]+?)( (?P<DiscNum>\d{2}))?%(sep)s(?P<TrackNum>\d{2}) - (?P<Title>[^%(sep)s]+)\.[mM][pP]3$" % __sepd
-# only work with the file basename: .*%(sep)s
-_REGEX_TEXT_FILENAME = r".*%(sep)s(?P<Artist>[^-]+) - ((?P<Year>\d{4}), )?(?P<Album>[^-]+?)( (?P<DiscNum>\d{2}))? - (?P<TrackNum>\d{2}) - (?P<Title>[^-]+)\.[mM][pP]3$" % __sepd
+_REGEX_TEXT_DIRECTORY = r"/(?P<genre>[^/]+)/(?P<artist>[^/]+)/((?P<year>\d{4}), )?(?P<album>[^/]+?)( (?P<disc_num>\d{2}))?/(?P<track_num>\d{2}) - (?P<title>[^/]+)\.[mm][pp]3$"
+# only work with the file basename: .*/
+_REGEX_TEXT_FILENAME = r".*/(?P<artist>[^-]+) - ((?P<year>\d{4}), )?(?P<album>[^-]+?)( (?P<disc_num>\d{2}))? - (?P<track_num>\d{2}) - (?P<title>[^-]+)\.[mm][pp]3$"
 
-def getUtf8String(d, key):
-    return d[key] if key and d[key] else ""
 
 class autoid3:
     """
@@ -51,104 +48,101 @@ class autoid3:
         self.__regex = regex
 
     def analyze(self, artist = "", genre = ""):
-        print "Analysing '%s'" % self.__filename
-        if not eyeD3.isMp3File(self.__filename):
-            raise Exception, "File is not a Mp3 file"
-        # get __old_tags
+        print("Analysing '%s'" % self.__filename)
+        if not eyed3.load(self.__filename):
+            raise Exception("File is not a Mp3 file")
+        # get _old_tags
         self.retrieveTags()
-        # try to set the __new_tags
+        # try to set the _new_tags
         searched = self.__regex.search(self.__filename)
         if not searched:
-            # couldn't get __new_tags
-            raise Exception, "Couldn't guess tags through filepath"
+            # couldn't get _new_tags
+            raise Exception("Couldn't guess tags through filepath")
 
         d = searched.groupdict()
-        # converting d to utf8 before storing in __new_tags
-        self.__new_tags = {}
-        for key in d.iterkeys():
-            if key == 'Year':
-                # if unicode the isUpdatable will fail the comparison
-                self.__new_tags[key] = d[key] if d[key] else ""
-            else:  # to unicode
-                self.__new_tags[key] = d[key].decode("utf8") if d[key] else ""
+        # store in _new_tags
+        self._new_tags = {}
+        for key in d.keys():
+            # or "" is for overriding None to ""
+            self._new_tags[key] = d.get(key, "") or ""
 
-            # but we still miss the genre
-            genre_obj = eyeD3.Genre()
-            # parsing it may throw eyeD3.GenreException. Let it be propagated
+        # but we still miss the genre
+        genre_obj = eyed3.id3.Genre()
+        # parsing it may throw eyed3.GenreException. Let it be propagated
         if genre:
             genre_obj.parse(genre)
-            # genre must be str, not unicode (setGenre requirement)
-            self.__new_tags["Genre"] = genre
+            # genre must be str
+            self._new_tags["genre"] = genre
         else:
-            genre_obj.parse(self.__new_tags["Genre"])
-            # can't handle unicode...
-            # Also my genres are comma separated, fix it
-            g = str(self.__new_tags["Genre"])
+            genre_obj.parse(self._new_tags["genre"])
+            # my genres are comma separated, fix it
+            g = str(self._new_tags["genre"])
             g = g.split(', ')
             g.reverse()
-            self.__new_tags["Genre"] = ' '.join(g)
+            self._new_tags["genre"] = ' '.join(g)
 
         if artist:
-            self.__new_tags["Artist"] = artist
+            self._new_tags["artist"] = artist
 
 
     def getOldTag(self, key):
-        return getUtf8String(self.__old_tags, key)
+        return self._old_tags.get(key, "")
     def getNewTag(self, key):
-        return getUtf8String(self.__new_tags, key)
+        return self._new_tags.get(key, "")
 
     def isUpdatable(self):
-        return self.__new_tags != self.__old_tags
+        return self._new_tags != self._old_tags
 
     def deleteOldTag(self):
-        if self.__tag.frames:
-            # only remove something if there's something
-            self.__tag.remove()
+        self.__tag.remove(self.__filename)
 
     def writeChanges(self):
         tag = self.__tag
-        tag.header.setVersion(eyeD3.ID3_V2_3)
-        tag.removeComments()
-        tag.addComment(_COMMENT)
+        tag.header.version = eyed3.id3.ID3_V2_3
+        tag.comments.set(_COMMENT)
         for t in DESIRED_TAGS:
-            # e.g: tag.setArtist(self.__new_tags['Artist'])
-            tag_info = self.__new_tags[t]
-            if t == 'TrackNum' or t == 'DiscNum':
+            # e.g: tag.setArtist(self._new_tags['Artist'])
+            tag_info = self._new_tags[t]
+            if t == 'track_num' or t == 'disc_num':
                 # argument is tuple (TrackNum, TotalTracks) with TotalTracks == None
-                eval('tag.set%s((%s, None))' % (t, repr(tag_info)))
-            elif t == 'Year':
-                tag.setDate(tag_info)  # only put Year
+                if tag_info:
+                    # do not set an empty metadata
+                    setattr(tag, t, (tag_info, None))
+            elif t == 'year':
+                tag.recording_date = eyed3.core.Date(int(tag_info))  # only put Year
             else:
                 # only put as string when it's string
-                tag_formatted = repr(tag_info) if type(tag_info) in (unicode, str) else tag_info
-                eval('tag.set%s(%s)' % (t, tag_formatted))
+                setattr(tag, t, tag_info)
 
         try:
-            tag.update(eyeD3.ID3_V2_3)
+            tag.save(self.__filename, version=eyed3.id3.ID3_V2_3)
         except:
             return False
 
         return True
 
     def retrieveTags(self):
-        "Define self.__old_tags with tag properties from self.__filename"
-        tag = self.__tag = eyeD3.Tag()
+        "Define self._old_tags with tag properties from self.__filename"
+        tag = self.__tag = eyed3.id3.tag.Tag()
         # following line may throw exceptions. Let it be propagated
-        tag.link(self.__filename)
+        tag.parse(open(self.__filename, 'rb'))
 
-        self.__old_tags = {}
+        self._old_tags = {}
         for t in DESIRED_TAGS:
-            # e.g: self.__old_tags['Artist'] = tag.getArtist()
-            if t == 'Genre':
-                self.__old_tags[t] = tag.getGenre().getName() if tag.getGenre() else ""
-            elif t == 'TrackNum' or t == 'DiscNum':
-                number = eval('tag.get%s()' % t)[0]  # Tuple: (TrackNum, TotalTracks)
-                self.__old_tags[t] = u'%02d' % number if number else ""
+            # e.g: self._old_tags['Artist'] = tag.getArtist()
+            if t == 'genre':
+                self._old_tags[t] = tag.genre.name if tag.genre else ""
+            elif t == 'track_num' or t == 'disc_num':
+                number = getattr(tag, t)[0]  # Tuple: (TrackNum, TotalTracks)
+                self._old_tags[t] = u'%02d' % number if number else ""
+            elif t == 'year':
+                year = tag.getBestDate().year if tag.getBestDate() else ""
+                self._old_tags[t] = year
             else:
-                self.__old_tags[t] = eval('tag.get%s()' % t)
+                self._old_tags[t] = getattr(tag, t)
 
     def dump(self):
-        print "old: %s\nnew: %s" % (repr(self.__old_tags), repr(self.__new_tags))
+        print("old: %s\nnew: %s" % (self._old_tags, self._new_tags))
 
 if __name__ == "__main__":
     from sys import argv, exit
@@ -202,14 +196,14 @@ if __name__ == "__main__":
     (opt, args) = parser.parse_args(argv)
     if len(args) < MIN_ARGS + 1:
         # not enough arguments
-        print """ERROR: not enough arguments.
-Try `%s --help' for more information""" % args[0].split(sep)[-1]
+        print("""ERROR: not enough arguments.
+Try `%s --help' for more information""" % args[0].split(sep)[-1])
         exit(1)
 
     # ignore the argv[0]
     files = args[1:] if args[1:] else glob("*.[mM][pP]3")
     if not files:
-        print "No files found"
+        print("No files found")
 
     if not opt.n:  # get tags from directories
         r = re.compile(_REGEX_TEXT_DIRECTORY)
@@ -222,35 +216,35 @@ Try `%s --help' for more information""" % args[0].split(sep)[-1]
         genre = opt.g
         try:
             id3.analyze(artist, genre)
-        except:
-            print "Error: ", sys.exc_info()[1]
+        except KeyboardInterrupt: # FIXME
+            print("Error: ", sys.exc_info()[1])
             if not opt.q:
-                print u"    Couldn't analyze the file. Quitting..."
+                print(u"    Couldn't analyze the file. Quitting...")
             continue
 
         if not id3.isUpdatable() and not opt.f:
             if not opt.q:
-                print u"    No new info to put"
+                print(u"    No new info to put")
             continue
 
         if not opt.q:
-            print "    File can be updated:"
+            print("    File can be updated:")
             for t in DESIRED_TAGS:
-                print "     %s: %s => %s" % (t, id3.getOldTag(t), id3.getNewTag(t))
+                print("     %s: %s => %s" % (t, id3.getOldTag(t), id3.getNewTag(t)))
 
         if opt.w:
             if not opt.k:
                 id3.deleteOldTag()
 
             if not id3.writeChanges():
-                print "Writing on the file failed!"
+                print("Writing on the file failed!")
                 continue
 
             if not opt.q:
-                print "File has been updated!"
+                print("File has been updated!")
         else:
-            print " (use the --write option to write the changes)"
+            print(" (use the --write option to write the changes)")
         print
     exit(0)
 
-# vim: set et
+# vim: tabstop=4 shiftwidth=4 expandtab autoindent softtabstop=4
