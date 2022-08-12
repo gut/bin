@@ -27,9 +27,9 @@ MIN_ARGS = 0
 DESIRED_TAGS = ('album', 'artist', 'disc_num', 'genre', 'title', 'track_num', 'year')
 _COMMENT = "Tagged by %s v%s from %s" % (path.basename(__file__), __VERSION__, __AUTHOR__)
 
-_REGEX_TEXT_DIRECTORY = r"/(?P<genre>[^/]+)/(?P<artist>[^/]+)/((?P<year>\d{4}), )?(?P<album>[^/]+?)( (?P<disc_num>\d{2}))?/(?P<track_num>\d{2}) - (?P<title>[^/]+)\.[mm][pp]3$"
+_REGEX_TEXT_DIRECTORY = r"/(?P<genre>[^/]+)/(?P<artist>[^/]+)/((?P<year>\d{4}), )?(?P<album>[^/]+?)( (?P<disc_num>\d{2}))?/(?P<track_num>\d{2}) - (?P<title>[^/]+)\.[Mm][Pp]3$"
 # only work with the file basename: .*/
-_REGEX_TEXT_FILENAME = r".*/(?P<artist>[^-]+) - ((?P<year>\d{4}), )?(?P<album>[^-]+?)( (?P<disc_num>\d{2}))? - (?P<track_num>\d{2}) - (?P<title>[^-]+)\.[mm][pp]3$"
+_REGEX_TEXT_FILENAME = r".*/(?P<artist>[^-]+) - ((?P<year>\d{4}), )?(?P<album>[^-]+?)( (?P<disc_num>\d{2}))? - (?P<track_num>\d{2}) - (?P<title>[^.]+)\.[Mm][Pp]3$"
 
 
 class autoid3:
