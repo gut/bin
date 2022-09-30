@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-#  Copyright (C) 2010 - Gustavo Serra Scalet <gsscalet@gmail.com>
+#  Copyright (C) 2022 - Gustavo Scalet <gsscalet@gmail.com>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,20 +16,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__AUTHOR__ = "Gustavo Serra Scalet <gsscalet@gmail.com>"
-__VERSION__ = "0.7"
+__AUTHOR__ = "Gustavo Scalet <gsscalet@gmail.com>"
+__VERSION__ = "0.8"
 
-import re, eyed3, sys
-from os import path
+import re, eyed3, sys, os
 
 MIN_ARGS = 0
 
 DESIRED_TAGS = ('album', 'artist', 'disc_num', 'genre', 'title', 'track_num', 'year')
-_COMMENT = "Tagged by %s v%s from %s" % (path.basename(__file__), __VERSION__, __AUTHOR__)
+_COMMENT = "Tagged by %s v%s from %s" % (os.path.basename(__file__), __VERSION__, __AUTHOR__)
 
-_REGEX_TEXT_DIRECTORY = r"/(?P<genre>[^/]+)/(?P<artist>[^/]+)/((?P<year>\d{4}), )?(?P<album>[^/]+?)( (?P<disc_num>\d{2}))?/(?P<track_num>\d{2}) - (?P<title>[^/]+)\.[Mm][Pp]3$"
+_REGEX_TEXT_DIRECTORY = r"/(?P<genre>[^/]+)/(?P<artist>[^/]+)/((?P<year>\d{4}), )?(?P<album>[^/]+?)/((?P<disc_num>\d))?(?P<track_num>\d{2}) (?P<title>[^/]+)\.[Mm][Pp]3$"
 # only work with the file basename: .*/
-_REGEX_TEXT_FILENAME = r".*/(?P<artist>[^-]+) - ((?P<year>\d{4}), )?(?P<album>[^-]+?)( (?P<disc_num>\d{2}))? - (?P<track_num>\d{2}) - (?P<title>[^.]+)\.[Mm][Pp]3$"
+_REGEX_TEXT_FILENAME = r".*/(?P<artist>[^-]+) - ((?P<year>\d{4}), )?(?P<album>[^-]+?) - ((?P<disc_num>\d))?(?P<track_num>\d{2}) - (?P<title>[^.]+)\.[Mm][Pp]3$"
+_RENAME_FILENAME_FORMAT = "{disc_num}{track_num} {title}.mp3"
 
 
 class autoid3:
@@ -38,14 +38,15 @@ class autoid3:
     some argument, use these files) and fill it's id3 data with its filename
     properties.
     Tries to match by the latest directories:
-    .../[Genre]/Artist/[Year, ]Album [DiscNum]/TrackNum - Title.mp3
+    .../[Genre]/Artist/[Year, ]Album/[DiscNum]TrackNum - Title.mp3
     Has the optional -g option to specify Genre.
     Has the optional -a option to specify Artist.
     """
 
-    def __init__(self, filename, regex):
-        self.__filename = path.realpath(filename)
+    def __init__(self, filename, regex, rename_format):
+        self.__filename = os.path.realpath(filename)
         self.__regex = regex
+        self.__rename_format = rename_format
 
     def analyze(self, artist = "", genre = ""):
         print("Analysing '%s'" % self.__filename)
@@ -53,6 +54,17 @@ class autoid3:
             raise Exception("File is not a Mp3 file")
         # get _old_tags
         self.retrieveTags()
+
+        if self.__rename_format:
+            # this mode is not meant to be changing tags
+            if self._old_tags['title'] and self._old_tags['track_num']:
+                # New meaningful name
+                self._new_filename = self.__rename_format.format(**self._old_tags)
+            else:
+                # Keep the old name, otherwise it'll be ' None.mp3'
+                self._new_filename = os.path.basename(self.__filename)
+            return
+
         # try to set the _new_tags
         searched = self.__regex.search(self.__filename)
         if not searched:
@@ -91,12 +103,23 @@ class autoid3:
         return self._new_tags.get(key, "")
 
     def isUpdatable(self):
+        if hasattr(self, "_new_filename"):
+            return os.path.basename(self.__filename) != self._new_filename
+
         return self._new_tags != self._old_tags
 
     def deleteOldTag(self):
         self.__tag.remove(self.__filename)
 
     def writeChanges(self):
+        if self.__rename_format:
+            return self.__renameFile()
+        elif self.__regex:
+            return self.__writeTags()
+        else:
+            print("Nothing to do")
+
+    def __writeTags(self):
         tag = self.__tag
         tag.header.version = eyed3.id3.ID3_V2_3
         tag.comments.set(_COMMENT)
@@ -121,6 +144,17 @@ class autoid3:
 
         return True
 
+    def __renameFile(self):
+        if os.path.isfile(self._new_filename):
+            print(f"      NOT overwritting '{self._new_filename}'")
+            return False
+        try:
+            os.rename(self.__filename, self._new_filename)
+            return True
+        except IOError:
+            return False
+
+
     def retrieveTags(self):
         "Define self._old_tags with tag properties from self.__filename"
         tag = self.__tag = eyed3.id3.tag.Tag()
@@ -132,7 +166,10 @@ class autoid3:
             # e.g: self._old_tags['Artist'] = tag.getArtist()
             if t == 'genre':
                 self._old_tags[t] = tag.genre.name if tag.genre else ""
-            elif t == 'track_num' or t == 'disc_num':
+            elif t == 'disc_num':
+                number = getattr(tag, t)[0]  # Tuple: (TrackNum, TotalTracks)
+                self._old_tags[t] = u'%1d' % number if number else ""
+            elif t == 'track_num':
                 number = getattr(tag, t)[0]  # Tuple: (TrackNum, TotalTracks)
                 self._old_tags[t] = u'%02d' % number if number else ""
             elif t == 'year':
@@ -173,7 +210,10 @@ if __name__ == "__main__":
             "Force tag writting even if it has the same tag already",
             False],
         'n' : ['name',
-            "Get info from filename: Artist - Year, Album [Disc] - Track - Name.mp3",
+            "Get info from filename: Artist - Year, AlbumName - [DiscNumber]Track - Name.mp3",
+            False],
+        'r' : ['rename',
+            "Rename files based on the tags: [DiscNumber]Track - Name.mp3",
             False],
     }
 
@@ -205,13 +245,18 @@ Try `%s --help' for more information""" % args[0].split(sep)[-1])
     if not files:
         print("No files found")
 
-    if not opt.n:  # get tags from directories
-        r = re.compile(_REGEX_TEXT_DIRECTORY)
+    if opt.r:  # get tags from files for renaming them
+        regex = None
+        rename_format = _RENAME_FILENAME_FORMAT
+    elif not opt.n:  # get tags from directories
+        regex = re.compile(_REGEX_TEXT_DIRECTORY)
+        rename_format = None
     else:  # get tag from filename
-        r = re.compile(_REGEX_TEXT_FILENAME)
+        regex = re.compile(_REGEX_TEXT_FILENAME)
+        rename_format = None
 
     for arg in files:
-        id3 = autoid3(arg, r)
+        id3 = autoid3(arg, regex, rename_format)
         artist = opt.a
         genre = opt.g
         try:
@@ -224,16 +269,19 @@ Try `%s --help' for more information""" % args[0].split(sep)[-1])
 
         if not id3.isUpdatable() and not opt.f:
             if not opt.q:
-                print(u"    No new info to put")
+                print(u"    No change detected")
             continue
 
         if not opt.q:
             print("    File can be updated:")
-            for t in DESIRED_TAGS:
-                print("     %s: %s => %s" % (t, id3.getOldTag(t), id3.getNewTag(t)))
+            if opt.r:
+                print("     '%s' => '%s'" % (arg, id3._new_filename))
+            else:
+                for t in DESIRED_TAGS:
+                    print("     %s: '%s' => '%s'" % (t, id3.getOldTag(t), id3.getNewTag(t)))
 
         if opt.w:
-            if not opt.k:
+            if not opt.r and not opt.k:  # opt.r does not care about tags
                 id3.deleteOldTag()
 
             if not id3.writeChanges():
