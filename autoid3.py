@@ -28,7 +28,7 @@ _COMMENT = "Tagged by %s v%s from %s" % (os.path.basename(__file__), __VERSION__
 
 _REGEX_TEXT_DIRECTORY = r"/(?P<genre>[^/]+)/(?P<artist>[^/]+)/((?P<year>\d{4}), )?(?P<album>[^/]+?)/((?P<disc_num>\d))?(?P<track_num>\d{2}) (?P<title>[^/]+)\.[Mm][Pp]3$"
 # only work with the file basename: .*/
-_REGEX_TEXT_FILENAME = r".*/(?P<artist>[^-]+) - ((?P<year>\d{4}), )?(?P<album>[^-]+?) - ((?P<disc_num>\d))?(?P<track_num>\d{2}) - (?P<title>[^.]+)\.[Mm][Pp]3$"
+_REGEX_TEXT_FILENAME = r".*/(?P<artist>[^-]+) - ((?P<year>\d{4}), )?(?P<album>[^-]+?) - ((?P<disc_num>\d))?(?P<track_num>\d{2}) (?P<title>[^.]+)\.[Mm][Pp]3$"
 _RENAME_FILENAME_FORMAT = "{disc_num}{track_num} {title}.mp3"
 
 
@@ -38,7 +38,7 @@ class autoid3:
     some argument, use these files) and fill it's id3 data with its filename
     properties.
     Tries to match by the latest directories:
-    .../[Genre]/Artist/[Year, ]Album/[DiscNum]TrackNum - Title.mp3
+    .../[Genre]/Artist/[Year, ]Album/[DiscNum]TrackNum Title.mp3
     Has the optional -g option to specify Genre.
     Has the optional -a option to specify Artist.
     """
@@ -210,10 +210,10 @@ if __name__ == "__main__":
             "Force tag writting even if it has the same tag already",
             False],
         'n' : ['name',
-            "Get info from filename: Artist - Year, AlbumName - [DiscNumber]Track - Name.mp3",
+            "Get info from filename: Artist - [Year, ]AlbumName - [DiscNumber]TrackNum Title.mp3",
             False],
         'r' : ['rename',
-            "Rename files based on the tags: [DiscNumber]Track - Name.mp3",
+            "Rename files based on the tags: [DiscNumber]TrackNum Title.mp3",
             False],
     }
 
