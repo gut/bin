@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
 Autor: Gustavo Serra Scalet (gsscalet@gmail.com)
 Licença de uso: GPL
-Ultima atualização: 19/10/2011 (v1.7)
+Ultima atualização: 01/11/2022 (v1.8)
 
 Descrição: Script que salva todos os arquivos jpeg (e bmp, se desejável) de
 uma pasta (recursivamente, se desejável) para outra, podendo ser esses novos
@@ -22,11 +22,11 @@ A partir da versão 1.6 também salva as metainformações da foto (exiv)
 # * Caso True o programa processará as fotos assim que for iniciado
 ModoPadrao = False
 # Pasta a qual os arquivos serão processadas ('.' será a pasta atual)
-OrigemPadrao = '.'
+OrigemPadrao = "."
 # Buscar arquivos recursivamente na pasta de origem?
 OrigemRecPadrao = False
 # Pasta a ser salvo as arquivos ('.' será a pasta atual)
-DestinoPadrao = 'comprimidas'
+DestinoPadrao = "comprimidas"
 # Qualidade padrão de compressão (1-100)
 QualPadrao = 80
 # Redimensionar a imagem?
@@ -42,50 +42,56 @@ RenInicioPadrao = 1
 # Fazer pacote zip no final da compressão?
 ZipPadrao = False
 # Nome do pacote zip a ser criado
-ZipNomePadrao = 'fotos.zip'
+ZipNomePadrao = "fotos.zip"
 # Converter arquivos Bmp?
 PegaBmpPadrao = True
 
 _TEM_EXIV2 = False
 try:
     import pyexiv2
+
     _TEM_EXIV2 = True
 except ImportError:
     from sys import exit
-    print "Biblioteca pyexiv2 não encontrada"
-    print "Não será possível copiar as metainformações exif(dica: no ubuntu o pacote chama-se python-pyexiv2)"
-    print
+
+    print("Biblioteca py3exiv2 não encontrada")
+    print("Não será possível copiar as metainformações exif. (dica: installe com `pip install py3exiv2`)")
+    print()
 
 try:
     from PIL import Image
 except ImportError:
-    print "É necessário ter a bilbioteca PIL (Python image library)."
-    print "Sem ela os redimensionamentos não podem ser feito."
-    print "Instale-o e execute novamente (dica: no ubuntu o pacote chama-se python-imaging)"
+    print("É necessário ter a biblioteca Pillow (Python image library fork).")
+    print("Sem ela os redimensionamentos não podem ser feito.")
+    print("Instale-o e execute novamente (dica: installe com `pip install Pillow`)")
     exit(1)
+
 
 class Foto(object):
     """Classe capaz de lidar com arquivos jpeg e bmps, feita basicamente com o intuito de comprimir imagens"""
+
     from time import time
 
     # "tabela" dos dados pré-definidos de resolução
     # fonte: http://web.forret.com/tools/megapixel_chart.asp
     redimTam = [
-        ['vga', 640],
-        ['svga', 800],
-        ['xga', 1024],
-        ['uxga', 1600],
-        ['1.3mp', 1280],
-        ['3mp', 2048],
-        ['4mp', 2448],
-        ['5mp', 2580],
-        ]
+        ["vga", 640],
+        ["svga", 800],
+        ["xga", 1024],
+        ["uxga", 1600],
+        ["1.3mp", 1280],
+        ["3mp", 2048],
+        ["4mp", 2448],
+        ["5mp", 2580],
+    ]
 
     def __init__(self):
         """Marca d'agua e configurações padrão do programa"""
         from os import sep
 
-        print("""Compressor de imagens para jpeg\n===============================\nAutor: Gustavo Serra Scalet (gsscalet@gmail.com)\nLicença de uso: GPL\n""")
+        print(
+            """Compressor de imagens para jpeg\n===============================\nAutor: Gustavo Serra Scalet (gsscalet@gmail.com)\nLicença de uso: GPL\n"""
+        )
         self.Origem = OrigemPadrao
         self.OrigemRec = OrigemRecPadrao
         self.Destino = DestinoPadrao
@@ -101,28 +107,32 @@ class Foto(object):
         self.Bmp = PegaBmpPadrao
 
     def __del__(self):
-        #"""Apenas um raw_input() para que o usuário possa ler a saída do programa""" 
-        print('\nPressione Enter para sair')
-        raw_input()
+        # """Apenas um raw_input() para que o usuário possa ler a saída do programa"""
+        print("\nPressione Enter para sair")
+        input()
 
-    def Termina(self, txt = ''):
+    def Termina(self, txt=""):
         """Chamada a finalização do programa, erros ou padrão, imprime mensagem caso necessário"""
         from sys import exit
+
         print(txt)
         exit()
 
     def TempoLegivel(self, tempo):
         if tempo >= 60:
-            return '%d min e %.03f s' % (int(tempo/60), tempo.__mod__(60),)
+            return "%d min e %.03f s" % (
+                int(tempo / 60),
+                tempo.__mod__(60),
+            )
         else:
-            return '%.03f s' % tempo
+            return "%.03f s" % tempo
 
     def BooleanString(self, bool):
         """Retorna caractere 's' se bool for verdadeira e 'n' se falso"""
         if bool:
-            return 's'
+            return "s"
         else:
-            return 'n'
+            return "n"
 
     def myint(self, i):
         """Evitar que o int(i) cause o erro ValueError. Se não for encontrado, retorne 1"""
@@ -149,58 +159,74 @@ class Foto(object):
 
     def Configura(self):
         """Lê as variáveis que serão usadas na execução"""
-        q = 'iniciado'
+        q = "iniciado"
         FirstLoop = True
-        while q != '':
+        while q != "":
             if not FirstLoop:
                 self.ConfiguraRedefine(str(q).lower())
 
             # Confirmação
             if FirstLoop:
-                print('Configurações padrão:')
+                print("Configurações padrão:")
             else:
-                print('\nConfigurações estabelecidas:')
-            print('o) Pasta origem a ser processada: "%s"' % self.Origem)
+                print("\nConfigurações estabelecidas:")
+            print(('o) Pasta origem a ser processada: "%s"' % self.Origem))
             if self.OrigemRec:
-                print('c) Buscar as fotos das subpastas de origem, inclusive')
+                print("c) Buscar as fotos das subpastas de origem, inclusive")
             else:
-                print('c) Não buscar as fotos de subpastas de origem')
-            print('d) Pasta destino que contera os arquivos processados: "%s"' % self.Destino)
-            print('q) Qualidade a ser usada: %d%%' % self.Qualidade)
+                print("c) Não buscar as fotos de subpastas de origem")
+            print(('d) Pasta destino que contera os arquivos processados: "%s"' % self.Destino))
+            print(("q) Qualidade a ser usada: %d%%" % self.Qualidade))
             if self.Redim:
-                StrRedim = ''
+                StrRedim = ""
                 if self.RedimNome:
-                    StrRedim = ' (%s)' % self.RedimNome
-                print('m) Novos arquivos serão redimensionadas para uma largura "%s"%s' % (self.RedimAlt, StrRedim,))
+                    StrRedim = " (%s)" % self.RedimNome
+                print(
+                    (
+                        'm) Novos arquivos serão redimensionadas para uma largura "%s"%s'
+                        % (
+                            self.RedimAlt,
+                            StrRedim,
+                        )
+                    )
+                )
             else:
-                print('m) Novos arquivos não serão redimensionadas')
+                print("m) Novos arquivos não serão redimensionadas")
             if self.Renom:
                 # fazendo uma string ter numero de zeros = self.RenomPat-1,
                 # terminando com '1.jpg'
-                print('r) Novos arquivos serão renomeados a partir de "%s"' % (
-                ''.join ("0" for i in range(self.RenomPat - len(str(self.RenomIni)))) + str(self.RenomIni) + '.jpg'))
+                print(
+                    (
+                        'r) Novos arquivos serão renomeados a partir de "%s"'
+                        % (
+                            "".join("0" for i in range(self.RenomPat - len(str(self.RenomIni))))
+                            + str(self.RenomIni)
+                            + ".jpg"
+                        )
+                    )
+                )
             else:
-                print('r) Novos arquivos não serão renomeados')
+                print("r) Novos arquivos não serão renomeados")
             if self.FazZip:
-                print('z) Será criado pacote Zip no fim da execução com nome "%s"' % self.NomeZip)
+                print(('z) Será criado pacote Zip no fim da execução com nome "%s"' % self.NomeZip))
             else:
-                print('z) Não será criado pacote Zip no fim da execução')
+                print("z) Não será criado pacote Zip no fim da execução")
             if self.Bmp:
-                print('b) Arquivos .bmp encontrados serão transformados para jpg')
+                print("b) Arquivos .bmp encontrados serão transformados para jpg")
             else:
-                print('b) Arquivos .bmp não serão transformados')
-            print('\nEntre com a letra relacionada a opção desejada ou apenas enter para iniciar:')
-            q = raw_input()
+                print("b) Arquivos .bmp não serão transformados")
+            print("\nEntre com a letra relacionada a opção desejada ou apenas enter para iniciar:")
+            q = input()
             FirstLoop = False
 
     def ConfiguraRedefine(self, q):
         """Redefine a configuracao 'q' entrada pelo usuario"""
         from os import sep
 
-        if q == 'o':
+        if q == "o":
             # define self.Origem
-            print('- Entre com o nome da pasta que contêm os arquivos a serem lidos, padrão: "%s"' % OrigemPadrao)
-            q = raw_input()
+            print(('- Entre com o nome da pasta que contêm os arquivos a serem lidos, padrão: "%s"' % OrigemPadrao))
+            q = input()
             if not q.strip():
                 q = OrigemPadrao
             # se o usuário digitou o separador, remova-o
@@ -208,62 +234,94 @@ class Foto(object):
                 q = q[:-1]
             self.Origem = q
 
-        elif q == 'c':
+        elif q == "c":
             # define a recursividade de self.Origem
-            print('- Deseja buscar as fotos em subpastas do diretório de origem? padrão: "%s"' % self.BooleanString(OrigemRecPadrao))
-            q = raw_input()
+            print(
+                (
+                    '- Deseja buscar as fotos em subpastas do diretório de origem? padrão: "%s"'
+                    % self.BooleanString(OrigemRecPadrao)
+                )
+            )
+            q = input()
             if not q.strip():
                 q = str(OrigemRecPadrao)
-            if q == "True" or q.strip().lower() == 's':
+            if q == "True" or q.strip().lower() == "s":
                 self.OrigemRec = True
             else:
                 self.OrigemRec = False
 
-        elif q == 'd':
+        elif q == "d":
             # define self.Destino
-            print('- Entre com o nome da pasta que será salvo os arquivos processados (se não houver, será criada), padrão: "%s"' % DestinoPadrao)
-            q = raw_input()
+            print(
+                (
+                    '- Entre com o nome da pasta que será salvo os arquivos processados (se não houver, será criada), padrão: "%s"'
+                    % DestinoPadrao
+                )
+            )
+            q = input()
             if not q.strip():
                 q = DestinoPadrao
             self.Destino = q
 
-        elif q == 'q':
+        elif q == "q":
             # define self.Qualidade
-            print('- Entre com a qualidade (1-100), padrão: %d%%' % QualPadrao)
-            q = raw_input()
+            print(("- Entre com a qualidade (1-100), padrão: %d%%" % QualPadrao))
+            q = input()
             if not q.strip():
                 q = QualPadrao
             # usuário tentando colocar qualidade inexistente
             while self.myint(q) > 100 or self.myint(q) < 1:
-                print('*** Qualidade "%d%%" impossível! Entre com o valor novamente' % self.myint(q))
-                q = raw_input()
+                print(('*** Qualidade "%d%%" impossível! Entre com o valor novamente' % self.myint(q)))
+                q = input()
                 if not q.strip():
                     q = QualPadrao
             self.Qualidade = int(q)
 
-        elif q == 'm':
+        elif q == "m":
             # define self.Redim e self.RedimAlt
             StrRed = self.BooleanString(RedimPadrao)
-            print('- Deseja redimensionar os novos arquivos (s/n)? padrão: "%s"\n OBS: Apenas para dimensões menores do que a original' % StrRed)
-            q = raw_input()
+            print(
+                (
+                    '- Deseja redimensionar os novos arquivos (s/n)? padrão: "%s"\n OBS: Apenas para dimensões menores do que a original'
+                    % StrRed
+                )
+            )
+            q = input()
             if not q.strip():
                 q = str(RenNumPadrao)
-            if q == "True" or q.strip().lower() == 's':
+            if q == "True" or q.strip().lower() == "s":
                 self.Redim = True
 
-                print(' Padrões pré definidos de resoluções:',)
+                print((" Padrões pré definidos de resoluções:",))
                 for i in self.redimTam:
                     # a cada 3, de uma quebra de linha
                     if not self.redimTam.index(i).__mod__(3):
-                        print('\n ',)
-                    print('%(padrão)s\t%(largura)s\t\t' % {'padrão': i[0], 'largura' : i[1],}),
+                        print(("\n ",))
+                    print(
+                        (
+                            "%(padrão)s\t%(largura)s\t\t"
+                            % {
+                                "padrão": i[0],
+                                "largura": i[1],
+                            }
+                        ),
+                        end=" ",
+                    )
 
                 StrRedim = self.ResInt2String(RedimAltPadrao)
                 if StrRedim:
-                    print('\n\n- Entre com a largura das novas imagens, padrão: "%s" (%s)' % (RedimAltPadrao, StrRedim,))
+                    print(
+                        (
+                            '\n\n- Entre com a largura das novas imagens, padrão: "%s" (%s)'
+                            % (
+                                RedimAltPadrao,
+                                StrRedim,
+                            )
+                        )
+                    )
                 else:
-                    print('\n\n- Entre com a largura das novas imagens, padrão: "%s"' % RedimAltPadrao)
-                q = raw_input()
+                    print(('\n\n- Entre com a largura das novas imagens, padrão: "%s"' % RedimAltPadrao))
+                q = input()
                 if not q.strip():
                     q = RedimAltPadrao
                 while self.myint(q) < 2:
@@ -272,8 +330,8 @@ class Foto(object):
                     q = self.ResString2Int(q)
                     if not q:
                         # não foi casado nenhum resultado valido
-                        print('*** Largura impossível! Entre com o valor novamente')
-                        q = raw_input()
+                        print("*** Largura impossível! Entre com o valor novamente")
+                        q = input()
                         if not q.strip():
                             q = RedimAltPadrao
                 self.RedimAlt = int(q)
@@ -281,58 +339,58 @@ class Foto(object):
             else:
                 self.Redim = False
 
-        elif q == 'r':
+        elif q == "r":
             # define self.Renom, self.RenomPat e self.RenomIni
             StrRen = self.BooleanString(RenNumPadrao)
-            print('- Deseja renomear os novos arquivos para numérico (s/n)? padrão: "%s"' % StrRen)
-            q = raw_input()
+            print(('- Deseja renomear os novos arquivos para numérico (s/n)? padrão: "%s"' % StrRen))
+            q = input()
             if not q.strip():
                 q = str(RenNumPadrao)
-            if q == "True" or q.strip().lower() == 's':
+            if q == "True" or q.strip().lower() == "s":
                 self.Renom = True
-                print('- Entre com o numero de casas fixas, padrão: "%s"' % RenCasasPadrao)
-                q = raw_input()
+                print(('- Entre com o numero de casas fixas, padrão: "%s"' % RenCasasPadrao))
+                q = input()
                 if not q.strip():
                     q = RenCasasPadrao
                 while self.myint(q) < 1:
-                    print('*** Numero de casas "%d" impossível! Entre com o valor novamente' % self.myint(q))
-                    q = raw_input()
+                    print(('*** Numero de casas "%d" impossível! Entre com o valor novamente' % self.myint(q)))
+                    q = input()
                     if not q.strip():
                         q = RenCasasPadrao
                 self.RenomPat = int(q)
-                print('- Entre com o primeiro número da seqüência, padrão: "%s"' % RenInicioPadrao)
-                q = raw_input()
+                print(('- Entre com o primeiro número da seqüência, padrão: "%s"' % RenInicioPadrao))
+                q = input()
                 if not q.strip():
                     q = RenInicioPadrao
                 self.RenomIni = self.myint(q)
             else:
                 self.Renom = False
 
-        elif q == 'z':
+        elif q == "z":
             # define self.FazZip e self.NomeZip
             StrZip = self.BooleanString(ZipPadrao)
-            print('- Deseja criar um pacote Zip (s/n)? padrão: "%s"' % StrZip)
-            q = raw_input()
+            print(('- Deseja criar um pacote Zip (s/n)? padrão: "%s"' % StrZip))
+            q = input()
             if not q.strip():
                 q = str(ZipPadrao)
-            if q == "True" or q.strip().lower() == 's':
+            if q == "True" or q.strip().lower() == "s":
                 self.FazZip = True
-                print('- Entre com o nome do pacote Zip a ser criado, padrão: "%s"' % ZipNomePadrao)
-                q = raw_input()
+                print(('- Entre com o nome do pacote Zip a ser criado, padrão: "%s"' % ZipNomePadrao))
+                q = input()
                 if not q.strip():
                     q = ZipNomePadrao
                 self.NomeZip = q
             else:
                 self.FazZip = False
 
-        elif q == 'b':
+        elif q == "b":
             # define self.Bmp
             StrBmp = self.BooleanString(PegaBmpPadrao)
-            print('- Deseja converter os arquivos .bmp para jpg (s/n)? padrão: "%s"' % StrBmp)
-            q = raw_input()
+            print(('- Deseja converter os arquivos .bmp para jpg (s/n)? padrão: "%s"' % StrBmp))
+            q = input()
             if not q.strip():
                 q = str(PegaBmpPadrao)
-            if q == "True" or q.strip().lower() == 's':
+            if q == "True" or q.strip().lower() == "s":
                 self.Bmp = True
             else:
                 self.Bmp = False
@@ -344,6 +402,7 @@ class Foto(object):
         if self.OrigemRec:
             # pega o nível raíz da origem q vai servir para criar os diretórios de destinos
             from os import sep
+
             nivelRaiz = self.Origem.split(sep).__len__()
             Arquivos = self.SalvaDir(self.Origem, self.Destino)
             if type(Arquivos) is not list:
@@ -354,7 +413,12 @@ class Foto(object):
                 # pega o novo diretório, sem a raíz do self.Origem
                 novoDirRec = i.split(sep)[nivelRaiz:]
                 # junta com o destino
-                esseDest = sep.join([self.Destino,] + novoDirRec)
+                esseDest = sep.join(
+                    [
+                        self.Destino,
+                    ]
+                    + novoDirRec
+                )
                 NovosArquivos = self.SalvaDir(i, esseDest)
                 if type(NovosArquivos) is list:
                     Arquivos.extend(NovosArquivos)
@@ -369,7 +433,7 @@ class Foto(object):
         tempo = self.time() - inicio
 
         # Resumo das operações
-        self.Termina('\n* Acoes realizadas com sucesso em %s, finalizando *' % self.TempoLegivel(self.time() - inicio))
+        self.Termina("\n* Acoes realizadas com sucesso em %s, finalizando *" % self.TempoLegivel(self.time() - inicio))
 
     def PegaDest(self, Arquivos, ori, dest):
         """Retorna o nome do arquivo destino do arquivo de origem 'ori'"""
@@ -378,25 +442,24 @@ class Foto(object):
 
         if self.Renom:
             # caso seja desejável renomear para o padrão numérico:
-            file = ('%0' + str(self.RenomPat) + 'd') % (
-                self.RenomIni + Arquivos.index(ori))
+            file = ("%0" + str(self.RenomPat) + "d") % (self.RenomIni + Arquivos.index(ori))
         else:
             # pega o nome do arquivo (retira diretório de origem, caso exista)
             file = ori.split(sep)[-1]
             # remove a extensão de 'file' (e o '.' separador)
-            file = file.replace('.' + file.split('.')[-1], '')
+            file = file.replace("." + file.split(".")[-1], "")
 
         # arquivo termina com bmp, mude a extensão
-        ThisDest = sep.join((dest, file + '.jpg'))
+        ThisDest = sep.join((dest, file + ".jpg"))
         return ThisDest
 
     def Legivel(self, tam):
         """Retorna uma string legível do espaço ocupado pelo arquivo 'tam'"""
         i = 1
         cont = 0
-        lista = ['b', 'kb', 'Mb', 'Gb']
+        lista = ["b", "kb", "Mb", "Gb"]
         while int(i) < abs(tam):
-            ret = '%(tam).1f %(not)s' % {'tam' : tam / i, 'not' : lista[cont]}
+            ret = "%(tam).1f %(not)s" % {"tam": tam / i, "not": lista[cont]}
             i = i * 1024.0
             cont = cont + 1
         return ret
@@ -417,19 +480,24 @@ class Foto(object):
 
     def pTempo(self, Atual, Total, ThisOri, ThisDest, OriRes, RedRes, ThisTempo):
         """Imprime uma string com tamanho dos arquivos e tempo do processamento"""
-        print(' %(Atual)d/%(Total)d - %(ONome)s [%(OriRes)s](%(OTam)s)\n\t=> %(DNome)s [%(RedRes)s](%(DTam)s) em %(Tempo)s s' % {
-            'Atual' : Atual,
-            'Total' : Total,
-            'OriRes' : 'x'.join((str(i) for i in OriRes)),
-            'ONome' : ThisOri,
-            'OTam' : self.Legivel(self.Tam(ThisOri)),
-            'RedRes' : 'x'.join((str(i) for i in RedRes)),
-            'DNome' : ThisDest,
-            'DTam' : self.Legivel(self.Tam(ThisDest)),
-            'Tempo' : ThisTempo,
-            })
+        print(
+            (
+                " %(Atual)d/%(Total)d - %(ONome)s [%(OriRes)s](%(OTam)s)\n\t=> %(DNome)s [%(RedRes)s](%(DTam)s) em %(Tempo)s s"
+                % {
+                    "Atual": Atual,
+                    "Total": Total,
+                    "OriRes": "x".join((str(i) for i in OriRes)),
+                    "ONome": ThisOri,
+                    "OTam": self.Legivel(self.Tam(ThisOri)),
+                    "RedRes": "x".join((str(i) for i in RedRes)),
+                    "DNome": ThisDest,
+                    "DTam": self.Legivel(self.Tam(ThisDest)),
+                    "Tempo": ThisTempo,
+                }
+            )
+        )
 
-    def ProcessaJpg(self, ThisOri, ThisDest, NovaLargura = ''):
+    def ProcessaJpg(self, ThisOri, ThisDest, NovaLargura=""):
         """Transforma em jpg a imagem ThisOri com qualidade self.Qualidade em ThisDest e retorna a resolução da imagem original e da nova"""
 
         ThisFoto = Image.open(ThisOri)
@@ -438,8 +506,11 @@ class Foto(object):
         if NovaLargura and NovaLargura < OriSize[0]:
             # newSize faz com que o tamanho da miniatura tenha a mesma proporção que na imagem original
             # [largura, largura * alturaAntiga / larguraAntiga]
-            NewSize = (NovaLargura, int(NovaLargura * float(ThisFoto.size[1]) / ThisFoto.size[0]))
-            ThisFoto.thumbnail(NewSize, resample=1) # 1 = ANTIALIAS
+            NewSize = (
+                NovaLargura,
+                int(NovaLargura * float(ThisFoto.size[1]) / ThisFoto.size[0]),
+            )
+            ThisFoto.thumbnail(NewSize, resample=1)  # 1 = ANTIALIAS
         ThisFoto.save(ThisDest, "JPEG", quality=self.Qualidade)
 
         # copia as informações exif
@@ -454,9 +525,7 @@ class Foto(object):
             ori_exif.copy(dest_exif, comment=False)
 
             # place my comment
-            commentTag = dest_exif['Exif.Photo.UserComment']
-            commentTag.value = "Processed from gut's processaJpg"
-
+            dest_exif.comment = "Processed from gut's processaJpg"
             dest_exif.write()
 
         return (OriSize, NewSize)
@@ -466,10 +535,10 @@ class Foto(object):
         from glob import glob
         from os import sep
 
-        Arquivos = glob(sep.join((fp,'*.[jJ][pP][gG]')))
-        Arquivos.extend(glob(sep.join((fp,'*.[jJ][pP][eE][gG]'))))
+        Arquivos = glob(sep.join((fp, "*.[jJ][pP][gG]")))
+        Arquivos.extend(glob(sep.join((fp, "*.[jJ][pP][eE][gG]"))))
         if self.Bmp:
-            Arquivos.extend(glob(sep.join((fp,'*.[bB][mM][pP]'))))
+            Arquivos.extend(glob(sep.join((fp, "*.[bB][mM][pP]"))))
         # o dicionário não vem organizado
         Arquivos.sort(key=str.lower)
         return Arquivos
@@ -482,12 +551,12 @@ class Foto(object):
         try:
             arqs = listdir(Dir)
         except OSError:
-        # caso não tenha nada naquele diretório
+            # caso não tenha nada naquele diretório
             return []
         dirs = []
         for i in arqs:
             # evitando com q todos os diretórios fiquem ./blabla
-            if Dir == '.':
+            if Dir == ".":
                 camRel = i
             else:
                 camRel = sep.join((Dir, i))
@@ -501,8 +570,8 @@ class Foto(object):
         # retorne os atuais mais os encontrados
         return dirs + dirFinal
 
-    def criaDir(self, destino, nivel = 1):
-        """"Função auxiliar que cria um diretório, incluindo o caso de criar dir1/dir2 se o dir1 não existir"""
+    def criaDir(self, destino, nivel=1):
+        """ "Função auxiliar que cria um diretório, incluindo o caso de criar dir1/dir2 se o dir1 não existir"""
         from glob import glob
         from os import mkdir
 
@@ -510,10 +579,11 @@ class Foto(object):
             try:
                 mkdir(destino)
             except IOError:
-                self.Termina(u'Impossível de criar a pasta "%s" (permissão negada)' % destino)
+                self.Termina('Impossível de criar a pasta "%s" (permissão negada)' % destino)
             except OSError:
                 # não é possível criar dir1/dir2 se dir1 não tiver sido criado antes
                 from os import sep
+
                 proxDir = destino.split(sep)[:nivel]
                 nivel += 1
                 self.criaDir(sep.join(proxDir), nivel)
@@ -528,17 +598,22 @@ class Foto(object):
 
         # não foi achado arquivo para ser processado, exibindo msg de ajuda e finalizando
         if not Arquivos:
-            print('Nenhum arquivo a ser processado achado na pasta "%s"\n' % origem)
+            print(('Nenhum arquivo a ser processado achado na pasta "%s"\n' % origem))
             return 1
 
         # caso não haja o diretorio Destino, crie-o
         self.criaDir(destino)
 
-        print('Origem: "%(ori)s", Destino: "%(dest)s", Qualidade: %(qualidade)d%%:' % {
-            'ori' : origem,
-            'dest' : destino,
-            'qualidade' : self.Qualidade,
-            })
+        print(
+            (
+                'Origem: "%(ori)s", Destino: "%(dest)s", Qualidade: %(qualidade)d%%:'
+                % {
+                    "ori": origem,
+                    "dest": destino,
+                    "qualidade": self.Qualidade,
+                }
+            )
+        )
         # processa todo e cada arquivo
         ArquivosProcessados = []
         for i in Arquivos:
@@ -546,21 +621,38 @@ class Foto(object):
             ThisInicio = self.time()
             if not self.Redim:
                 # não haverá redimensionamento
-                self.RedimAlt = ''
+                self.RedimAlt = ""
             (OriRes, RedRes) = self.ProcessaJpg(i, ArquivosProcessados[-1], self.RedimAlt)
-            self.pTempo(Arquivos.index(i)+1, Arquivos.__len__(), i, ArquivosProcessados[-1], OriRes, RedRes, '%.03f' % (self.time() - ThisInicio))
+            self.pTempo(
+                Arquivos.index(i) + 1,
+                Arquivos.__len__(),
+                i,
+                ArquivosProcessados[-1],
+                OriRes,
+                RedRes,
+                "%.03f" % (self.time() - ThisInicio),
+            )
 
         # imprime resumo das operações
         velho = self.TamDir(Arquivos)
         novo = self.TamDir(ArquivosProcessados)
-        print("""*** Espaço economizado: %(velho)s - %(novo)s = %(dif)s (%(rel).1f%%) em %(tempo)s\n""" % {
-            'tempo' : self.TempoLegivel(self.time() - inicio),
-            'velho' : self.Legivel(velho),
-            'novo' : self.Legivel(novo),
-            'dif' : self.Legivel(velho - novo),
-            'rel' : 100.0 * (1-float(novo)/float(velho)),
-            })
-        return (ArquivosProcessados, velho, novo,)
+        print(
+            (
+                """*** Espaço economizado: %(velho)s - %(novo)s = %(dif)s (%(rel).1f%%) em %(tempo)s\n"""
+                % {
+                    "tempo": self.TempoLegivel(self.time() - inicio),
+                    "velho": self.Legivel(velho),
+                    "novo": self.Legivel(novo),
+                    "dif": self.Legivel(velho - novo),
+                    "rel": 100.0 * (1 - float(novo) / float(velho)),
+                }
+            )
+        )
+        return (
+            ArquivosProcessados,
+            velho,
+            novo,
+        )
 
     def Zipa(self, Arquivos):
         """Função para zipar a lista de arquivos Arquivos"""
@@ -570,7 +662,7 @@ class Foto(object):
         DirPadrao = getcwd()
         # muda o diretório de trabalho para q todos os arquivos fiquem na raíz do primeiro arquivo
         RaizPos = Arquivos[0].split(sep)[:-1]
-        Raiz = ''.join(RaizPos)
+        Raiz = "".join(RaizPos)
         RaizPos = RaizPos.__len__()
         ThisDir = sep.join((DirPadrao, Raiz))
         chdir(ThisDir)
@@ -578,13 +670,13 @@ class Foto(object):
         inicio = self.time()
         try:
             # abre o arquivo para escrita, modo append
-            z = ZipFile(self.NomeZip, mode="a", compression = 0)
+            z = ZipFile(self.NomeZip, mode="a", compression=0)
         except IOError:
             try:
                 # abre o arquivo para escrita, criando um novo
-                z = ZipFile(self.NomeZip, mode="w", compression = 0)
+                z = ZipFile(self.NomeZip, mode="w", compression=0)
             except IOError:
-                self.Termina(u'Impossível de criar zip "%s" (permissão negada)' % self.NomeZip)
+                self.Termina('Impossível de criar zip "%s" (permissão negada)' % self.NomeZip)
 
         # para fazer o zip ter apenas arquivos na raíz:
 
@@ -595,12 +687,18 @@ class Foto(object):
         z.close()
 
         # Resumo das operações
-        print('\n*** Pacote zip %(nome)s com %(tam)s criado com sucesso em %(tempo)s' % {
-            'nome' : self.NomeZip,
-            'tam' : self.Legivel(self.Tam(self.NomeZip)),
-            'tempo' : self.TempoLegivel(self.time() - inicio),
-            })
+        print(
+            (
+                "\n*** Pacote zip %(nome)s com %(tam)s criado com sucesso em %(tempo)s"
+                % {
+                    "nome": self.NomeZip,
+                    "tam": self.Legivel(self.Tam(self.NomeZip)),
+                    "tempo": self.TempoLegivel(self.time() - inicio),
+                }
+            )
+        )
         chdir(DirPadrao)
+
 
 if __name__ == "__main__":
     # Algoritmo principal
@@ -613,14 +711,16 @@ if __name__ == "__main__":
             foto.Configura()
         # Executa o programa com as opções escolhidas
         foto.Inicia()
-    except (KeyboardInterrupt, EOFError,):
-        pass;
-
+    except (
+        KeyboardInterrupt,
+        EOFError,
+    ):
+        pass
 
 
 # 2do:
 # * verificação forçada dos opções padrão na inicialização
-# * salvar as opções modificadas como opções padrões 
+# * salvar as opções modificadas como opções padrões
 #   após o término com êxito do programa (fazendo sobreescrita desse arquivo)
 # * construir um binário de windows que funcione, não necessitando assim
 
