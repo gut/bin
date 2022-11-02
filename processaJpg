@@ -28,11 +28,11 @@ OrigemRecPadrao = False
 # Pasta a ser salvo as arquivos ('.' será a pasta atual)
 DestinoPadrao = "comprimidas"
 # Qualidade padrão de compressão (1-100)
-QualPadrao = 80
+QualPadrao = 90
 # Redimensionar a imagem?
 RedimPadrao = False
 # Para qual largura (a altura será proporcional a imagem antiga)
-RedimAltPadrao = 1280
+RedimAltPadrao = 2580
 # Renomear os arquivos para formato numérico? (ex: 001.jpg)
 RenNumPadrao = True
 # Quantas casas fixas terá o novo nome da foto?
