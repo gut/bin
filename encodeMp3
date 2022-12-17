@@ -33,6 +33,7 @@ def encodaDir(esteDir = '', br = bitrate):
     arqs.extend(glob(path.join(esteDir,'*.[Ff][Ll][Aa][Cc]')))
     arqs.extend(glob(path.join(esteDir,'*.[mM]4[Aa]')))
     arqs.extend(glob(path.join(esteDir,'*.[wW][mM][Aa]')))
+    arqs.extend(glob(path.join(esteDir,'*.[oO][pP][uU][sS]')))
     # ordenando para uma saída melhor
     arqs.sort()
     flag = True
@@ -53,7 +54,7 @@ def encodaDir(esteDir = '', br = bitrate):
             else:
                 raise IOError(retorno, "Flac: arquivo %s" % arqTmp)
             arqNovo = changeExtension(arq, 'mp3')
-        elif arq.lower().endswith('m4a') or arq.lower().endswith('wma'):
+        elif any(arq.lower().endswith(ext) for ext in ('m4a', 'wma', 'opus')):
             # transforma para wav primeiro
             arqWav = changeExtension(arqTmp, 'wav')
             args = ['mplayer', '-quiet', '-ao',
@@ -62,7 +63,7 @@ def encodaDir(esteDir = '', br = bitrate):
             print(f"Calling: {' '.join(args)}")
             retorno = call(args)
             if not retorno:
-                # deu tudo certo transformando (m4a|wma)=>wave, removendo o (m4a|wma)
+                # deu tudo certo transformando pra wave, removendo a extensão
                 unlink(arqTmp)
                 arqTmp = arqWav
             else:
