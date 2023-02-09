@@ -51,7 +51,7 @@ class autoid3:
         self.__regex = regex
         self.__rename_format = rename_format
 
-    def analyze(self, artist = "", genre = ""):
+    def analyze(self, artist = "", genre = "", prefix_tracknum_in_title=False):
         print("Analysing '%s'" % self.__filename)
         if not eyed3.load(self.__filename):
             raise Exception("File is not a Mp3 file")
@@ -98,6 +98,10 @@ class autoid3:
 
         if artist:
             self._new_tags["artist"] = artist
+
+        if prefix_tracknum_in_title:
+            tags = self._new_tags
+            self._new_tags["title"] = f"{tags['track_num']} {tags['title']}"
 
 
     def getOldTag(self, key):
@@ -221,6 +225,9 @@ if __name__ == "__main__":
         'r' : ['rename',
             "Rename files based on the tags: [DiscNumber]TrackNum Title.mp3",
             False],
+        'c' : ['car',
+            "Prefix the TrackNum on Title (MS Sync infotainment workaround)",
+            False],
     }
 
     options_list = ' '.join(["[-%s --%s]" % (o, options[o][0]) for o in options])
@@ -265,8 +272,9 @@ Try `%s --help' for more information""" % args[0].split(sep)[-1])
         id3 = autoid3(arg, regex, rename_format)
         artist = opt.a
         genre = opt.g
+        prefix_tracknum_in_title = opt.c
         try:
-            id3.analyze(artist, genre)
+            id3.analyze(artist, genre, prefix_tracknum_in_title)
         except KeyboardInterrupt: # FIXME
             print("Error: ", sys.exc_info()[1])
             if not opt.q:
