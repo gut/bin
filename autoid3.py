@@ -7,12 +7,12 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
@@ -26,7 +26,7 @@ logging.getLogger("eyed3.id3").setLevel(logging.ERROR)
 
 MIN_ARGS = 0
 
-DESIRED_TAGS = ('album', 'artist', 'disc_num', 'genre', 'title', 'track_num', 'year')
+DESIRED_TAGS = ("album", "artist", "disc_num", "genre", "title", "track_num", "year")
 _COMMENT = "Tagged by %s v%s from %s" % (os.path.basename(__file__), __VERSION__, __AUTHOR__)
 
 _REGEX_TEXT_DIRECTORY = r"/(?P<genre>[^/]+)/(?P<artist>[^/]+)/((?P<year>\d{4}), (?P<album>[^/]+)/)?((?P<disc_num>\d)?(?P<track_num>\d{2}) )?(?P<title>[^/]+)\.[Mm][Pp]3$"
@@ -51,7 +51,7 @@ class autoid3:
         self.__regex = regex
         self.__rename_format = rename_format
 
-    def analyze(self, artist = "", genre = "", prefix_tracknum_in_title=False):
+    def analyze(self, artist="", genre="", prefix_tracknum_in_title=False):
         print("Analysing '%s'" % self.__filename)
         if not eyed3.load(self.__filename):
             raise Exception("File is not a Mp3 file")
@@ -60,7 +60,7 @@ class autoid3:
 
         if self.__rename_format:
             # this mode is not meant to be changing tags
-            if self._old_tags['title'] and self._old_tags['track_num']:
+            if self._old_tags["title"] and self._old_tags["track_num"]:
                 # New meaningful name
                 self._new_filename = self.__rename_format.format(**self._old_tags)
             else:
@@ -92,9 +92,9 @@ class autoid3:
             genre_obj.parse(self._new_tags["genre"])
             # my genres are comma separated, fix it
             g = str(self._new_tags["genre"])
-            g = g.split(', ')
+            g = g.split(", ")
             g.reverse()
-            self._new_tags["genre"] = ' '.join(g)
+            self._new_tags["genre"] = " ".join(g)
 
         if artist:
             self._new_tags["artist"] = artist
@@ -103,9 +103,9 @@ class autoid3:
             tags = self._new_tags
             self._new_tags["title"] = f"{tags['track_num']} {tags['title']}"
 
-
     def getOldTag(self, key):
         return self._old_tags.get(key, "")
+
     def getNewTag(self, key):
         return self._new_tags.get(key, "")
 
@@ -136,12 +136,12 @@ class autoid3:
         for t in DESIRED_TAGS:
             # e.g: tag.setArtist(self._new_tags['Artist'])
             tag_info = self._new_tags[t]
-            if t == 'track_num' or t == 'disc_num':
+            if t == "track_num" or t == "disc_num":
                 # argument is tuple (TrackNum, TotalTracks) with TotalTracks == None
                 if tag_info:
                     # do not set an empty metadata
                     setattr(tag, t, (tag_info, None))
-            elif t == 'year' and tag_info:
+            elif t == "year" and tag_info:
                 tag.recording_date = eyed3.core.Date(int(tag_info))  # only put Year
             else:
                 # only put as string when it's string
@@ -164,25 +164,24 @@ class autoid3:
         except IOError:
             return False
 
-
     def retrieveTags(self):
         "Define self._old_tags with tag properties from self.__filename"
         tag = self.__tag = eyed3.id3.tag.Tag()
         # following line may throw exceptions. Let it be propagated
-        tag.parse(open(self.__filename, 'rb'))
+        tag.parse(open(self.__filename, "rb"))
 
         self._old_tags = {}
         for t in DESIRED_TAGS:
             # e.g: self._old_tags['Artist'] = tag.getArtist()
-            if t == 'genre':
+            if t == "genre":
                 self._old_tags[t] = tag.genre.name if tag.genre else ""
-            elif t == 'disc_num':
+            elif t == "disc_num":
                 number = getattr(tag, t)[0]  # Tuple: (TrackNum, TotalTracks)
-                self._old_tags[t] = u'%1d' % number if number else ""
-            elif t == 'track_num':
+                self._old_tags[t] = "%1d" % number if number else ""
+            elif t == "track_num":
                 number = getattr(tag, t)[0]  # Tuple: (TrackNum, TotalTracks)
-                self._old_tags[t] = u'%02d' % number if number else ""
-            elif t == 'year':
+                self._old_tags[t] = "%02d" % number if number else ""
+            elif t == "year":
                 year = tag.getBestDate().year if tag.getBestDate() else ""
                 self._old_tags[t] = str(year)
             else:
@@ -190,6 +189,7 @@ class autoid3:
 
     def dump(self):
         print("old: %s\nnew: %s" % (self._old_tags, self._new_tags))
+
 
 if __name__ == "__main__":
     from sys import argv, exit
@@ -199,58 +199,43 @@ if __name__ == "__main__":
 
     options = {
         # 'one_letter_option' : ['full_option_name',
-            # "Help",
-            # default_value],
-        'q' : ['quiet',
-            "Less verbose",
-            False],
-        'k' : ['keep-old',
-            "Keep old tag info that's not overwritten",
-            False],
-        'w' : ['write',
-            "Write changes to file, if applicable",
-            False],
-        'g' : ['genre',
-            "Insert this genre on this file",
-            ""],
-        'a' : ['artist',
-            "Insert this artist on this file",
-            ""],
-        'f' : ['force',
-            "Force tag writting even if it has the same tag already",
-            False],
-        'n' : ['name',
-            "Get info from filename: Artist - [Year, ]AlbumName - [DiscNumber]TrackNum Title.mp3",
-            False],
-        'r' : ['rename',
-            "Rename files based on the tags: [DiscNumber]TrackNum Title.mp3",
-            False],
-        'c' : ['car',
-            "Prefix the TrackNum on Title (MS Sync infotainment workaround)",
-            False],
+        # "Help",
+        # default_value],
+        "q": ["quiet", "Less verbose", False],
+        "k": ["keep-old", "Keep old tag info that's not overwritten", False],
+        "w": ["write", "Write changes to file, if applicable", False],
+        "g": ["genre", "Insert this genre on this file", ""],
+        "a": ["artist", "Insert this artist on this file", ""],
+        "f": ["force", "Force tag writting even if it has the same tag already", False],
+        "n": ["name", "Get info from filename: Artist - [Year, ]AlbumName - [DiscNumber]TrackNum Title.mp3", False],
+        "r": ["rename", "Rename files based on the tags: [DiscNumber]TrackNum Title.mp3", False],
+        "c": ["car", "Prefix the TrackNum on Title (MS Sync infotainment workaround)", False],
     }
 
-    options_list = ' '.join(["[-%s --%s]" % (o, options[o][0]) for o in options])
-    desc = autoid3.__doc__.replace('    ','')
-    parser = OptionParser("%%prog %s [file1 file2 file3 ...]" % options_list,
-            description=desc,
-            version="%%prog %s" % __VERSION__)
+    options_list = " ".join(["[-%s --%s]" % (o, options[o][0]) for o in options])
+    desc = autoid3.__doc__.replace("    ", "")
+    parser = OptionParser(
+        "%%prog %s [file1 file2 file3 ...]" % options_list, description=desc, version="%%prog %s" % __VERSION__
+    )
 
     for o in options:
-        shorter = '-' + o
-        longer = '--' + options[o][0]
+        shorter = "-" + o
+        longer = "--" + options[o][0]
         if type(options[o][2]) is bool:
-            parser.add_option(shorter, longer, dest=o, help=options[o][1],
-                action="store_true", default=options[o][2])
+            parser.add_option(shorter, longer, dest=o, help=options[o][1], action="store_true", default=options[o][2])
         elif type(options[o][2]) is str:
-            parser.add_option(shorter, longer, dest=o, help=options[o][1],
-                action="store", type="string", default=options[o][2])
+            parser.add_option(
+                shorter, longer, dest=o, help=options[o][1], action="store", type="string", default=options[o][2]
+            )
 
     (opt, args) = parser.parse_args(argv)
     if len(args) < MIN_ARGS + 1:
         # not enough arguments
-        print("""ERROR: not enough arguments.
-Try `%s --help' for more information""" % args[0].split(sep)[-1])
+        print(
+            """ERROR: not enough arguments.
+Try `%s --help' for more information"""
+            % args[0].split(sep)[-1]
+        )
         exit(1)
 
     # ignore the argv[0]
@@ -275,15 +260,15 @@ Try `%s --help' for more information""" % args[0].split(sep)[-1])
         prefix_tracknum_in_title = opt.c
         try:
             id3.analyze(artist, genre, prefix_tracknum_in_title)
-        except KeyboardInterrupt: # FIXME
+        except KeyboardInterrupt:  # FIXME
             print("Error: ", sys.exc_info()[1])
             if not opt.q:
-                print(u"    Couldn't analyze the file. Quitting...")
+                print("    Couldn't analyze the file. Quitting...")
             continue
 
         if not id3.isUpdatable() and not opt.f:
             if not opt.q:
-                print(u"    No change detected")
+                print("    No change detected")
             continue
 
         if not opt.q:
