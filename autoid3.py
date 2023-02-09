@@ -109,7 +109,10 @@ class autoid3:
         if hasattr(self, "_new_filename"):
             return os.path.basename(self.__filename) != self._new_filename
 
-        return self._new_tags != self._old_tags
+        for t in DESIRED_TAGS:
+            if self._new_tags[t] != self._old_tags[t]:
+                return True
+        return False
 
     def deleteOldTag(self):
         self.__tag.remove(self.__filename)
@@ -134,7 +137,7 @@ class autoid3:
                 if tag_info:
                     # do not set an empty metadata
                     setattr(tag, t, (tag_info, None))
-            elif t == 'year':
+            elif t == 'year' and tag_info:
                 tag.recording_date = eyed3.core.Date(int(tag_info))  # only put Year
             else:
                 # only put as string when it's string
@@ -177,7 +180,7 @@ class autoid3:
                 self._old_tags[t] = u'%02d' % number if number else ""
             elif t == 'year':
                 year = tag.getBestDate().year if tag.getBestDate() else ""
-                self._old_tags[t] = year
+                self._old_tags[t] = str(year)
             else:
                 self._old_tags[t] = getattr(tag, t)
 
