@@ -19,7 +19,10 @@
 __AUTHOR__ = "Gustavo Scalet <gsscalet@gmail.com>"
 __VERSION__ = "0.8"
 
-import re, eyed3, sys, os
+import re, eyed3, sys, os, logging
+
+# Suppressing warnings being printed like "Non standard genre name"
+logging.getLogger("eyed3.id3").setLevel(logging.ERROR)
 
 MIN_ARGS = 0
 
