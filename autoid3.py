@@ -185,7 +185,8 @@ class autoid3:
                 year = tag.getBestDate().year if tag.getBestDate() else ""
                 self._old_tags[t] = str(year)
             else:
-                self._old_tags[t] = getattr(tag, t)
+                # 'or ""' is for overriding None to ""
+                self._old_tags[t] = getattr(tag, t) or ""
 
     def dump(self):
         print("old: %s\nnew: %s" % (self._old_tags, self._new_tags))
