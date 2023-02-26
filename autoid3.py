@@ -78,7 +78,7 @@ class autoid3:
         # store in _new_tags
         self._new_tags = {}
         for key in d.keys():
-            # or "" is for overriding None to ""
+            # 'or ""' is for overriding None to ""
             self._new_tags[key] = d.get(key, "") or ""
 
         # but we still miss the genre
