@@ -99,7 +99,7 @@ class autoid3:
         if artist:
             self._new_tags["artist"] = artist
 
-        if prefix_tracknum_in_title:
+        if prefix_tracknum_in_title and self._new_tags["track_num"]:
             tags = self._new_tags
             self._new_tags["title"] = f"{tags['track_num']} {tags['title']}"
 
