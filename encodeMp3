@@ -30,6 +30,7 @@ def encodaDir(esteDir = '', br = bitrate):
     # pegando os áudios suportados
     arqs = glob(path.join(esteDir,'*.[mM][pP]3'))
     arqs.extend(glob(path.join(esteDir,'*.[Ww][Aa][Vv]')))
+    arqs.extend(glob(path.join(esteDir,'*.[Ww][Ee][bb][Mm]')))
     arqs.extend(glob(path.join(esteDir,'*.[Ff][Ll][Aa][Cc]')))
     arqs.extend(glob(path.join(esteDir,'*.[mM]4[Aa]')))
     arqs.extend(glob(path.join(esteDir,'*.[wW][mM][Aa]')))
@@ -53,6 +54,19 @@ def encodaDir(esteDir = '', br = bitrate):
                 arqTmp = arqWav
             else:
                 raise IOError(retorno, "Flac: arquivo %s" % arqTmp)
+            arqNovo = changeExtension(arq, 'mp3')
+        elif arq.lower().endswith('webm'):
+            # transforma para wav primeiro
+            arqWav = changeExtension(arqTmp, 'wav')
+            args = ['ffmpeg', '-i', arqTmp, '-vn', arqWav]
+            print(f"Calling: {' '.join(args)}")
+            retorno = call(args)
+            if not retorno:
+                # deu tudo certo transformando webm=>wave, removendo o webm
+                unlink(arqTmp)
+                arqTmp = arqWav
+            else:
+                raise IOError(retorno, "Webm: arquivo %s" % arqTmp)
             arqNovo = changeExtension(arq, 'mp3')
         elif any(arq.lower().endswith(ext) for ext in ('m4a', 'wma', 'opus')):
             # transforma para wav primeiro
